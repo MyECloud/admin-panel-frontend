@@ -1,0 +1,40 @@
+@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+@theme static {
+    --font-sans: 'Public Sans', sans-serif;
+    --font-unbounded: 'Unbounded', sans-serif;
+
+   /* Colors */
+    --color-black: #282634;
+    --color-ec-gray-50: #FAFAFA;
+    --color-ec-gray-100: #F4F4F5;
+    --color-ec-gray-200: #E4E4E7;
+    --color-ec-gray-300: #D4D4D8;
+    --color-ec-gray-400: #ADADB6;
+    --color-ec-gray-500: #777986;
+    --color-ec-gray-600: #5B5D6D;
+    --color-ec-gray-700: #494B5B;
+    --color-ec-gray-800: #383A49;
+    --color-ec-gray-900: #2C2E3A;
+    --color-ec-primary-50: #F8F2F2;
+    --color-ec-primary-100: #F5EDED;
+    --color-ec-primary-200: #EDDEDE;
+    --color-ec-primary-300: #E6D1D1;
+    --color-ec-primary-400: #DEC0C0;
+    --color-ec-primary-500: #A18DA5;
+    --color-ec-primary-600: #706590;
+    --color-ec-primary-700: #5C5588;
+    --color-ec-primary-800: #47416D;
+    --color-ec-primary-900: #3B3659;
+    --color-ec-positive-50: #FEF3F8;
+    --color-ec-positive-100: #FCE7EF;
+    --color-ec-positive-200: #FBCFE1;
+    --color-ec-positive-300: #F9A8C8;
+    --color-ec-positive-400: #EF76A6;
+    --color-ec-positive-500: #E15089;
+    --color-ec-positive-600: #D24E87;
+    --color-ec-positive-700: #B34B81;
+    --color-ec-positive-800: #94487B;
+    --color-ec-positive-900: #764575;
+}

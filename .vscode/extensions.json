@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "editorconfig.editorconfig",
+        "vue.volar",
+        "dbaeumer.vscode-eslint",
+        "nuxtr.nuxtr-vscode",
+        "bradlc.vscode-tailwindcss"
+    ]
+}
