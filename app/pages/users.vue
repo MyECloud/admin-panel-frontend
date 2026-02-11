@@ -122,17 +122,17 @@ const columns: TableColumn<User>[] = [
     }
   },
   {
-    accessorKey: 'premium',
+    accessorKey: 'status',
     header: 'Premium Attivo',
     filterFn: 'equals',
     cell: ({ row }) => {
       const color = {
-        subscribed: 'success' as const,
-        unsubscribed: 'error' as const,
-        bounced: 'warning' as const
+        subscribed: 'success',
+        unsubscribed: 'error',
+        bounced: 'warning'
       }[row.original.status]
 
-      return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () =>
+      return h(UBadge, { variant: 'subtle', color }, () =>
         row.original.status
       )
     }
@@ -209,16 +209,21 @@ const columns: TableColumn<User>[] = [
 
 const statusFilter = ref('all')
 
-watch(() => statusFilter.value, (newVal) => {
-  if (!table?.value?.tableApi) return
+watch(statusFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'status' && f.id !== 'newContents'
+  )
 
-  const statusColumn = table.value.tableApi.getColumn('status')
-  if (!statusColumn) return
+  if (newVal === 'subscribed') {
+    columnFilters.value.push({ id: 'status', value: 'subscribed' })
+  }
 
-  if (newVal === 'all') {
-    statusColumn.setFilterValue(undefined)
-  } else {
-    statusColumn.setFilterValue(newVal)
+  if (newVal === 'unsubscribed') {
+    columnFilters.value.push({ id: 'status', value: 'unsubscribed' })
+  }
+
+  if (newVal === 'recent') {
+    columnFilters.value.push({ id: 'newContents', value: true })
   }
 })
 
@@ -316,7 +321,7 @@ const pagination = ref({
               { label: 'Tutti', value: 'all' },
               { label: 'Premium', value: 'subscribed' },
               { label: 'Non premium', value: 'unsubscribed' },
-              { label: 'Aggiornati di recente', value: 'unsubscribed' }
+              { label: 'Aggiornati di recente', value: 'recent' }
             ]"
             :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
             placeholder="Filter status"
