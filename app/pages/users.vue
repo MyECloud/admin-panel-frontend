@@ -87,8 +87,8 @@ const columns: TableColumn<User>[] = [
     header: 'ID'
   },
   {
-    accessorKey: 'name',
-    header: 'Nome',
+    accessorKey: 'username',
+    header: 'Username',
     cell: ({ row }) => {
       return h('div', { class: 'flex items-center gap-3' }, [
         h(UAvatar, {
@@ -103,14 +103,14 @@ const columns: TableColumn<User>[] = [
     }
   },
   {
-    accessorKey: 'email',
+    accessorKey: 'type',
     header: ({ column }) => {
       const isSorted = column.getIsSorted()
 
       return h(UButton, {
         color: 'neutral',
         variant: 'ghost',
-        label: 'Email',
+        label: 'Tipologia',
         icon: isSorted
           ? isSorted === 'asc'
             ? 'i-lucide-arrow-up-narrow-wide'
@@ -122,8 +122,8 @@ const columns: TableColumn<User>[] = [
     }
   },
   {
-    accessorKey: 'status',
-    header: 'Stato',
+    accessorKey: 'premium',
+    header: 'Premium Attivo',
     filterFn: 'equals',
     cell: ({ row }) => {
       const color = {
@@ -137,6 +137,49 @@ const columns: TableColumn<User>[] = [
       )
     }
   },
+  {
+    accessorKey: 'supporter',
+    header: 'Supporter',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.supporter ? 'success' : 'neutral'
+        },
+        () => (row.original.supporter ? 'Sì' : 'No')
+      )
+    }
+  },
+  {
+    accessorKey: 'documentsVerified',
+    header: 'Documenti verificati',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.documentsVerified ? 'success' : 'error'
+        },
+        () => (row.original.documentsVerified ? 'Verificati' : 'Non verificati')
+      )
+    }
+  },
+  {
+    accessorKey: 'newContents',
+    header: 'Nuovi contenuti',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.newContents ? 'primary' : 'neutral'
+        },
+        () => (row.original.newContents ? 'Sì' : 'No')
+      )
+    }
+  },
+
   {
     id: 'actions',
     cell: ({ row }) => {

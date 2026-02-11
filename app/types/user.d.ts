@@ -6,5 +6,8 @@ export interface User {
   email: string
   avatar?: AvatarProps
   status: UserStatus
+  documentsVerified: boolean
+  newContents: boolean
+  supporter: boolean
   location: string
 }
