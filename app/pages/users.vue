@@ -19,7 +19,7 @@ const columnFilters = ref([{
   value: ''
 }])
 const columnVisibility = ref()
-const rowSelection = ref({ 1: true })
+const rowSelection = ref({})
 
 const { data, status } = await useFetch<User[]>('/api/customers', {
   lazy: true
@@ -96,8 +96,8 @@ const columns: TableColumn<User>[] = [
           size: 'lg'
         }),
         h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted' }, row.original.name),
-          h('p', { class: '' }, `@${row.original.name}`)
+          h('p', { class: 'font-medium text-highlighted' }, row.original.username),
+          h('p', { class: '' }, `@${row.original.username}`)
         ])
       ])
     }
@@ -222,6 +222,13 @@ watch(() => statusFilter.value, (newVal) => {
   }
 })
 
+const selectedUsers = computed<User>((): User => {
+  if (!table?.value?.tableApi) return []
+  return table.value.tableApi
+    .getFilteredSelectedRowModel()
+    .rows.map((row: Row<User>) => row.original)
+})
+
 const email = computed({
   get: (): string => {
     return (table.value?.tableApi?.getColumn('email')?.getFilterValue() as string) || ''
@@ -257,7 +264,37 @@ const pagination = ref({
         />
 
         <div class="flex flex-wrap items-center gap-1.5">
-          <EcUsersDeleteModal :count="table?.tableApi?.getFilteredSelectedRowModel().rows.length">
+          <EcUsersAddPremiumModal :users="selectedUsers">
+            <UButton
+              v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+              label="Aggiungi premium"
+              color="success"
+              variant="subtle"
+              icon="i-lucide-plus"
+            >
+              <template #trailing>
+                <UKbd>
+                  {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}
+                </UKbd>
+              </template>
+            </UButton>
+          </EcUsersAddPremiumModal>
+          <EcUsersDisableProfileModal :users="selectedUsers">
+            <UButton
+              v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+              label="Disattiva profilo"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-plus"
+            >
+              <template #trailing>
+                <UKbd>
+                  {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}
+                </UKbd>
+              </template>
+            </UButton>
+          </EcUsersDisableProfileModal>
+          <EcUsersDeleteModal :users="selectedUsers">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"

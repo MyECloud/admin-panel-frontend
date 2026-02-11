@@ -16,8 +16,7 @@ async function onSubmit() {
 <template>
   <UModal
     v-model:open="open"
-    :title="`Cancella ${users.length} utenti`"
-    :description="`Sei sicuro? Questa operazione non può essere annullata.`"
+    :title="`Aggiungi ${users.length} utenti all'abbonamento premium`"
   >
     <slot />
 
@@ -37,7 +36,7 @@ async function onSubmit() {
           @click="open = false"
         />
         <UButton
-          label="Delete"
+          label="Aggiungi"
           color="error"
           variant="solid"
           loading-auto
