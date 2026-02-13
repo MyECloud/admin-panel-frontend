@@ -234,12 +234,12 @@ const selectedUsers = computed<User>((): User => {
     .rows.map((row: Row<User>) => row.original)
 })
 
-const email = computed({
+const usernameFilter = computed({
   get: (): string => {
-    return (table.value?.tableApi?.getColumn('email')?.getFilterValue() as string) || ''
+    return (table.value?.tableApi?.getColumn('username')?.getFilterValue() as string) || ''
   },
   set: (value: string) => {
-    table.value?.tableApi?.getColumn('email')?.setFilterValue(value || undefined)
+    table.value?.tableApi?.getColumn('username')?.setFilterValue(value || undefined)
   }
 })
 
@@ -262,7 +262,7 @@ const pagination = ref({
     <template #body>
       <div class="flex flex-wrap items-center justify-between gap-1.5">
         <UInput
-          v-model="email"
+          v-model="usernameFilter"
           class="max-w-sm"
           icon="i-lucide-search"
           placeholder="Cerca utenti..."
