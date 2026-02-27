@@ -21,9 +21,33 @@ const columnFilters = ref([{
 const columnVisibility = ref()
 const rowSelection = ref({ 1: true })
 
-const { data, status } = await useFetch<User[]>('/api/customers', {
-  lazy: true
-})
+const data = ref<User[]>([
+  {
+    id: 123,
+    name: 'Alessia Bianchi',
+    email: 'alessia.bianchi@example.com',
+    avatar: { src: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' },
+    status: 'subscribed',
+    location: 'Milano, IT'
+  },
+  {
+    id: 124,
+    name: 'Marco Rossi',
+    email: 'marco.rossi@example.com',
+    avatar: { src: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
+    status: 'unsubscribed',
+    location: 'Roma, IT'
+  },
+  {
+    id: 125,
+    name: 'Giulia Neri',
+    email: 'giulia.neri@example.com',
+    avatar: { src: 'https://i.pravatar.cc/150?u=a048581f4e29026701d' },
+    status: 'bounced',
+    location: 'Napoli, IT'
+  }
+])
+const status = ref('success')
 
 function getRowItems(row: Row<User>) {
   return [
@@ -90,13 +114,17 @@ const columns: TableColumn<User>[] = [
     accessorKey: 'name',
     header: 'Nome',
     cell: ({ row }) => {
-      return h('div', { class: 'flex items-center gap-3' }, [
+      const NuxtLink = resolveComponent('NuxtLink')
+      return h(NuxtLink, {
+        to: `/users/${row.original.id}`,
+        class: 'flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-white/5 p-1 -m-1 rounded-lg transition-colors group cursor-pointer'
+      }, () => [
         h(UAvatar, {
           ...row.original.avatar,
           size: 'lg'
         }),
         h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted' }, row.original.name),
+          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
           h('p', { class: '' }, `@${row.original.name}`)
         ])
       ])
