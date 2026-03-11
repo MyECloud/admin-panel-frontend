@@ -1,6 +1,19 @@
 <script setup lang="ts">
 const route = useRoute()
 const userName = ref(`Utente ${route.params.id}`)
+const isSuspended = ref(false)
+const isSuspendModalOpen = ref(false)
+const isDeleteModalOpen = ref(false)
+const deleteModalState = ref({
+  title: 'Elimina account',
+  description: 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente',
+  itemName: ''
+})
+
+const openDeleteModal = (title: string, description: string, itemName: string) => {
+  deleteModalState.value = { title, description, itemName }
+  isDeleteModalOpen.value = true
+}
 </script>
 
 <template>
@@ -16,6 +29,24 @@ const userName = ref(`Utente ${route.params.id}`)
 
     <template #body>
       <div class="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-8">
+        <div class="flex items-center justify-center gap-3 w-full">
+          <UButton
+            icon="i-heroicons-user-minus"
+            :color="isSuspended ? 'error' : 'neutral'"
+            variant="ghost"
+            class="transition-colors hover:text-error dark:hover:text-error disabled:opacity-100"
+            :class="{ 'text-error dark:text-error': isSuspended, 'text-primary-500 dark:text-primary-400': !isSuspended }"
+            @click="isSuspendModalOpen = true"
+          />
+          <UButton
+            icon="i-heroicons-trash"
+            color="neutral"
+            variant="ghost"
+            class="transition-colors hover:text-error dark:hover:text-error text-primary-500 dark:text-primary-400"
+            @click="openDeleteModal('Elimina account', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente l\'utente', userName)"
+          />
+        </div>
+
         <!-- Nome Utente -->
         <UCard class="flex items-center justify-center font-bold text-xl py-2">
           {{ userName }}
@@ -23,36 +54,36 @@ const userName = ref(`Utente ${route.params.id}`)
 
         <!-- Documents States -->
         <UCard>
-          <div class="grid grid-cols-4 gap-4 text-center">
-            <div class="flex flex-col gap-4">
-              <div class="text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-4 text-center">
+            <div class="flex flex-col gap-2 sm:gap-4">
+              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
                 Documenti<br>Inviati
               </div>
-              <div class="text-green-500 font-bold">
+              <div class="text-green-500 font-bold text-sm sm:text-base">
                 Si
               </div>
             </div>
-            <div class="flex flex-col gap-4">
-              <div class="text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
+            <div class="flex flex-col gap-2 sm:gap-4">
+              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
                 Documenti<br>Ricevuti
               </div>
-              <div class="text-green-500 font-bold">
+              <div class="text-green-500 font-bold text-sm sm:text-base">
                 Si
               </div>
             </div>
-            <div class="flex flex-col gap-4">
-              <div class="text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
+            <div class="flex flex-col gap-2 sm:gap-4">
+              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
                 Documenti<br>Archiviati
               </div>
-              <div class="text-red-500 font-bold">
+              <div class="text-red-500 font-bold text-sm sm:text-base">
                 No
               </div>
             </div>
-            <div class="flex flex-col gap-4">
-              <div class="text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
+            <div class="flex flex-col gap-2 sm:gap-4">
+              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
                 Documenti<br>verificati
               </div>
-              <div class="text-red-500 font-bold">
+              <div class="text-red-500 font-bold text-sm sm:text-base">
                 No
               </div>
             </div>
@@ -86,7 +117,12 @@ const userName = ref(`Utente ${route.params.id}`)
               01/10/26
             </div>
             <div class="flex items-center justify-center gap-2">
-              <UButton icon="i-heroicons-trash" color="neutral" variant="ghost" />
+              <UButton
+                icon="i-heroicons-trash"
+                color="neutral"
+                variant="ghost"
+                @click="openDeleteModal('Rimuovi stato Premium', 'Vuoi davvero rimuovere lo stato Premium per', userName)"
+              />
               <UButton icon="i-heroicons-pencil-square" color="neutral" variant="ghost" />
             </div>
           </div>
@@ -147,6 +183,7 @@ const userName = ref(`Utente ${route.params.id}`)
                   color="neutral"
                   variant="ghost"
                   class="text-gray-700 dark:text-gray-300"
+                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 1')"
                 />
               </div>
             </div>
@@ -172,6 +209,7 @@ const userName = ref(`Utente ${route.params.id}`)
                   color="neutral"
                   variant="ghost"
                   class="text-gray-700 dark:text-gray-300"
+                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 2')"
                 />
               </div>
             </div>
@@ -197,6 +235,7 @@ const userName = ref(`Utente ${route.params.id}`)
                   color="neutral"
                   variant="ghost"
                   class="text-gray-700 dark:text-gray-300"
+                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 3')"
                 />
               </div>
             </div>
@@ -205,4 +244,44 @@ const userName = ref(`Utente ${route.params.id}`)
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Modal for Suspend/Unsuspend -->
+  <UModal
+    v-model:open="isSuspendModalOpen"
+    title="Conferma azione"
+    :description="`Sei sicuro di voler ${isSuspended ? 'sbloccare' : 'sospendere'} l'utente ${userName}?`"
+    :overlay="true"
+    :ui="{ overlay: 'bg-black/50 backdrop-blur-sm' }"
+  >
+    <template #body>
+      <div class="flex justify-end gap-3">
+        <UButton color="neutral" variant="ghost" @click="isSuspendModalOpen = false">
+          Annulla
+        </UButton>
+        <UButton :color="isSuspended ? 'success' : 'error'" @click="isSuspended = !isSuspended; isSuspendModalOpen = false">
+          {{ isSuspended ? 'Sblocca utente' : 'Sospendi utente' }}
+        </UButton>
+      </div>
+    </template>
+  </UModal>
+
+  <!-- Modal for Delete -->
+  <UModal
+    v-model:open="isDeleteModalOpen"
+    :title="deleteModalState.title"
+    :description="`${deleteModalState.description} ${deleteModalState.itemName}?`"
+    :overlay="true"
+    :ui="{ overlay: 'bg-black/50 backdrop-blur-sm' }"
+  >
+    <template #body>
+      <div class="flex justify-end gap-3">
+        <UButton color="neutral" variant="ghost" @click="isDeleteModalOpen = false">
+          Annulla
+        </UButton>
+        <UButton color="error" @click="isDeleteModalOpen = false">
+          Elimina utente
+        </UButton>
+      </div>
+    </template>
+  </UModal>
 </template>
