@@ -20,6 +20,7 @@
     "@nuxt/image": "2.0.0",
     "@nuxt/scripts": "0.13.2",
     "@nuxt/ui": "^4.4.0",
+    "@nuxtjs/turnstile": "^1.1.2",
     "@pinia/nuxt": "0.11.3",
     "@sidebase/nuxt-auth": "1.1.1",
     "@tanstack/table-core": "^8.21.3",

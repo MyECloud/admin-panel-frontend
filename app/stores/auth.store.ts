@@ -1,31 +1,24 @@
 import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('auth', () => {
-  const { signIn, signOut, refresh: refreshToken } = useAuth()
+  const { signIn, data, signOut, refresh: refreshToken, getSession } = useAuth()
 
   // Methods
-  const login = async (
-    usernameOrEmail: string,
-    password: string
-  ) => {
-    return signIn({
-      user: usernameOrEmail,
-      password
-    }, { external: true })
-  }
+  const login = async (usernameOrEmail: string, password: string, captchaToken: string) =>
+    signIn({ user: usernameOrEmail, password, captchaToken }, { redirect: false })
 
-  const refresh = async () => {
-    return refreshToken()
-  }
+  const refresh = async () => refreshToken()
 
-  const logout = async (redirect = false) => {
-    return signOut({ redirect, external: true })
-  }
+  const logout = async (redirect = true) =>
+    signOut({ redirect, callbackUrl: '/login' })
+
+  const updateSession = () => getSession()
 
   return {
-    // Methods
+    data,
     login,
     refresh,
-    logout
+    logout,
+    updateSession
   }
 })

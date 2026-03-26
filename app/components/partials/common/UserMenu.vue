@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useAuthStore } from '~/stores/auth.store'
 
 defineProps<{
   collapsed?: boolean
 }>()
 
 const colorMode = useColorMode()
+const authStore = useAuthStore()
+const { data: session } = useAuth()
 
-const user = ref({
-  name: 'Administrator',
+const user = computed(() => ({
+  name: (session.value as any)?.name ?? (session.value as any)?.username ?? 'Administrator',
+  email: (session.value as any)?.email ?? '',
   avatar: {
-    alt: 'Administrator'
+    src: (session.value as any)?.avatar ?? undefined,
+    alt: (session.value as any)?.name ?? (session.value as any)?.username ?? 'Administrator'
   }
-})
+}))
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
   label: user.value.name,
+  description: user.value.email,
   avatar: user.value.avatar
 }], [{
   label: 'Tema',
@@ -47,7 +53,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   }]
 }], [{
   label: 'Log out',
-  icon: 'i-lucide-log-out'
+  icon: 'i-lucide-log-out',
+  onSelect: () => authStore.logout()
 }]]))
 </script>
 

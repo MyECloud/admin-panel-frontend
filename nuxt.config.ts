@@ -9,8 +9,13 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@vee-validate/nuxt',
     '@pinia/nuxt',
-    '@sidebase/nuxt-auth'
+    '@sidebase/nuxt-auth',
+    '@nuxtjs/turnstile'
   ],
+
+  turnstile: {
+    siteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY
+  },
 
   components: [
     {
@@ -46,13 +51,19 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-07-11',
 
   auth: {
-    originEnvKey: 'NUXT_PUBLIC_API_BASE_URL',
+    globalAppMiddleware: {
+      isEnabled: true,
+      allow404WithoutAuth: false
+    },
     provider: {
       type: 'local',
+      pages: {
+        login: '/login'
+      },
       endpoints: {
-        signIn: { path: '/admin/auth/signin', method: 'post' },
-        signOut: { path: '/admin/auth/logout', method: 'post' },
-        getSession: { path: '/admin/users/me', method: 'get' }
+        signIn: { path: '/auth/signin', method: 'post' },
+        signOut: { path: '/auth/logout', method: 'post' },
+        getSession: { path: '/users/me', method: 'get' }
       },
       token: {
         signInResponseTokenPointer: '/accessToken',
@@ -61,7 +72,7 @@ export default defineNuxtConfig({
       refresh: {
         isEnabled: false,
         endpoint: {
-          path: '/admin/auth/refreshToken',
+          path: '/auth/refreshToken',
           method: 'post'
         },
         token: {
