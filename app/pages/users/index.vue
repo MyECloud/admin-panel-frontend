@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 import { upperFirst } from 'scule'
-import { getPaginationRowModel } from '@tanstack/table-core'
 import type { Row } from '@tanstack/table-core'
-import type { User } from '~/types/user'
+import type { User, PaginatedResponse, ApiUser } from '~/types/user'
 
 const UAvatar = resolveComponent('UAvatar')
 const UButton = resolveComponent('UButton')
@@ -13,6 +12,10 @@ const UCheckbox = resolveComponent('UCheckbox')
 
 const toast = useToast()
 const table = useTemplateRef('table')
+const { $api } = useNuxtApp()
+
+const page = ref(1)
+const pageSize = ref(10)
 
 const columnFilters = ref([{
   id: 'email',
@@ -21,35 +24,32 @@ const columnFilters = ref([{
 const columnVisibility = ref()
 const rowSelection = ref({})
 
-const data = ref<User[]>([
-  {
-    id: 123,
-    name: 'Alessia Bianchi',
-    email: 'alessia.bianchi@example.com',
-    avatar: { src: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' },
-    status: 'subscribed',
-    location: 'Milano, IT'
+const { data: response, status, refresh } = await useAsyncData(
+  'users-list',
+  () => {
+    console.log('[Users] Fetching users — page:', page.value, 'limit:', pageSize.value)
+    return $api<PaginatedResponse<ApiUser>>('/admin/users', {
+      query: { page: page.value, limit: pageSize.value }
+    }).catch((err) => {
+      console.error('[Users] API error:', err)
+      return null
+    })
   },
   {
-    id: 124,
-    name: 'Marco Rossi',
-    email: 'marco.rossi@example.com',
-    avatar: { src: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
-    status: 'unsubscribed',
-    location: 'Roma, IT'
-  },
-  {
-    id: 125,
-    name: 'Giulia Neri',
-    email: 'giulia.neri@example.com',
-    avatar: { src: 'https://i.pravatar.cc/150?u=a048581f4e29026701d' },
-    status: 'bounced',
-    location: 'Napoli, IT'
+    server: false,
+    watch: [page, pageSize]
   }
-])
-const status = ref('success')
+)
 
-function getRowItems(row: Row<User>) {
+watchEffect(() => {
+  console.log('[Users] Response:', response.value)
+  console.log('[Users] Status:', status.value)
+})
+
+const data = computed(() => response.value?.items ?? [])
+const totalItems = computed(() => response.value?.meta?.totalItems ?? 0)
+
+function getRowItems(row: Row<ApiUser>) {
   return [
     {
       type: 'label',
@@ -87,7 +87,7 @@ function getRowItems(row: Row<User>) {
   ]
 }
 
-const columns: TableColumn<User>[] = [
+const columns: TableColumn<ApiUser>[] = [
   {
     id: 'select',
     header: ({ table }) =>
@@ -111,8 +111,8 @@ const columns: TableColumn<User>[] = [
     header: 'ID'
   },
   {
-    accessorKey: 'username',
-    header: 'Username',
+    accessorKey: 'name',
+    header: 'Utente',
     cell: ({ row }) => {
       const NuxtLink = resolveComponent('NuxtLink')
       return h(NuxtLink, {
@@ -120,48 +120,53 @@ const columns: TableColumn<User>[] = [
         class: 'flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-white/5 p-1 -m-1 rounded-lg transition-colors group cursor-pointer'
       }, () => [
         h(UAvatar, {
-          ...row.original.avatar,
+          src: row.original.avatarUrl || undefined,
+          alt: row.original.name,
           size: 'lg'
         }),
         h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.username),
-          h('p', { class: '' }, `@${row.original.username}`)
+          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
+          h('p', { class: 'text-sm text-muted' }, `@${row.original.username}`)
         ])
       ])
     }
   },
   {
     accessorKey: 'type',
-    header: ({ column }) => {
-      const isSorted = column.getIsSorted()
-
-      return h(UButton, {
-        color: 'neutral',
-        variant: 'ghost',
-        label: 'Tipologia',
-        icon: isSorted
-          ? isSorted === 'asc'
-            ? 'i-lucide-arrow-up-narrow-wide'
-            : 'i-lucide-arrow-down-wide-narrow'
-          : 'i-lucide-arrow-up-down',
-        class: '-mx-2.5',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-      })
+    header: 'Tipologia',
+    filterFn: 'equals',
+    cell: ({ row }) => {
+      const label = row.original.type === 'escort' ? 'Escort' : 'Utente'
+      const color = row.original.type === 'escort' ? 'primary' : 'neutral'
+      return h(UBadge, { variant: 'subtle', color }, () => label)
     }
   },
   {
-    accessorKey: 'status',
-    header: 'Premium Attivo',
-    filterFn: 'equals',
+    accessorKey: 'isActive',
+    header: 'Stato',
     cell: ({ row }) => {
-      const color = {
-        subscribed: 'success',
-        unsubscribed: 'error',
-        bounced: 'warning'
-      }[row.original.status]
-
-      return h(UBadge, { variant: 'subtle', color }, () =>
-        row.original.status
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.isActive ? 'success' : 'error'
+        },
+        () => (row.original.isActive ? 'Attivo' : 'Disattivo')
+      )
+    }
+  },
+  {
+    id: 'premium',
+    header: 'Premium',
+    cell: ({ row }) => {
+      const isPremium = row.original.premium?.isActive
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: isPremium ? 'success' : 'neutral'
+        },
+        () => (isPremium ? 'Attivo' : 'No')
       )
     }
   },
@@ -169,27 +174,14 @@ const columns: TableColumn<User>[] = [
     accessorKey: 'supporter',
     header: 'Supporter',
     cell: ({ row }) => {
+      const isSupporter = !!row.original.supporter
       return h(
         UBadge,
         {
           variant: 'subtle',
-          color: row.original.supporter ? 'success' : 'neutral'
+          color: isSupporter ? 'success' : 'neutral'
         },
-        () => (row.original.supporter ? 'Sì' : 'No')
-      )
-    }
-  },
-  {
-    accessorKey: 'documentsVerified',
-    header: 'Documenti verificati',
-    cell: ({ row }) => {
-      return h(
-        UBadge,
-        {
-          variant: 'subtle',
-          color: row.original.documentsVerified ? 'success' : 'error'
-        },
-        () => (row.original.documentsVerified ? 'Verificati' : 'Non verificati')
+        () => (isSupporter ? 'Sì' : 'No')
       )
     }
   },
@@ -207,7 +199,6 @@ const columns: TableColumn<User>[] = [
       )
     }
   },
-
   {
     id: 'actions',
     cell: ({ row }) => {
@@ -236,22 +227,33 @@ const columns: TableColumn<User>[] = [
 ]
 
 const statusFilter = ref('all')
+const typeFilter = ref('all')
 
 watch(statusFilter, (newVal) => {
   columnFilters.value = columnFilters.value.filter(
-    f => f.id !== 'status' && f.id !== 'newContents'
+    f => f.id !== 'isActive' && f.id !== 'premium'
   )
 
-  if (newVal === 'subscribed') {
-    columnFilters.value.push({ id: 'status', value: 'subscribed' })
+  if (newVal === 'active') {
+    columnFilters.value.push({ id: 'isActive', value: true })
   }
 
-  if (newVal === 'unsubscribed') {
-    columnFilters.value.push({ id: 'status', value: 'unsubscribed' })
+  if (newVal === 'inactive') {
+    columnFilters.value.push({ id: 'isActive', value: false })
   }
 
-  if (newVal === 'recent') {
-    columnFilters.value.push({ id: 'newContents', value: true })
+  if (newVal === 'premium') {
+    columnFilters.value.push({ id: 'premium', value: true })
+  }
+})
+
+watch(typeFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'type'
+  )
+
+  if (newVal !== 'all') {
+    columnFilters.value.push({ id: 'type', value: newVal })
   }
 })
 
@@ -264,16 +266,22 @@ const selectedUsers = computed<User>((): User => {
 
 const usernameFilter = computed({
   get: (): string => {
-    return (table.value?.tableApi?.getColumn('username')?.getFilterValue() as string) || ''
+    return (table.value?.tableApi?.getColumn('name')?.getFilterValue() as string) || ''
   },
   set: (value: string) => {
-    table.value?.tableApi?.getColumn('username')?.setFilterValue(value || undefined)
+    table.value?.tableApi?.getColumn('name')?.setFilterValue(value || undefined)
   }
 })
 
-const pagination = ref({
-  pageIndex: 0,
-  pageSize: 10
+const pagination = computed({
+  get: () => ({
+    pageIndex: page.value - 1,
+    pageSize: pageSize.value
+  }),
+  set: (val) => {
+    page.value = val.pageIndex + 1
+    pageSize.value = val.pageSize
+  }
 })
 </script>
 
@@ -344,12 +352,23 @@ const pagination = ref({
           </EcUsersDeleteModal>
 
           <USelect
+            v-model="typeFilter"
+            :items="[
+              { label: 'Tutti i tipi', value: 'all' },
+              { label: 'Escort', value: 'escort' },
+              { label: 'Utente', value: 'user' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Tipo"
+            class="min-w-28"
+          />
+          <USelect
             v-model="statusFilter"
             :items="[
               { label: 'Tutti', value: 'all' },
-              { label: 'Premium', value: 'subscribed' },
-              { label: 'Non premium', value: 'unsubscribed' },
-              { label: 'Aggiornati di recente', value: 'recent' }
+              { label: 'Attivi', value: 'active' },
+              { label: 'Disattivati', value: 'inactive' },
+              { label: 'Premium', value: 'premium' }
             ]"
             :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
             placeholder="Filter status"
@@ -384,14 +403,21 @@ const pagination = ref({
         </div>
       </div>
 
+      <div v-if="status === 'pending'" class="flex flex-col items-center justify-center py-12 gap-3">
+        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
+        <p class="text-sm text-muted">Caricamento utenti...</p>
+      </div>
+
       <UTable
+        v-else
         ref="table"
         v-model:column-filters="columnFilters"
         v-model:column-visibility="columnVisibility"
         v-model:row-selection="rowSelection"
         v-model:pagination="pagination"
+        :row-count="totalItems"
         :pagination-options="{
-          getPaginationRowModel: getPaginationRowModel()
+          manualPagination: true
         }"
         class="shrink-0"
         :data="data"
@@ -410,15 +436,15 @@ const pagination = ref({
       <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
         <div class="text-sm text-muted">
           {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} di
-          {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }} selezionati.
+          {{ totalItems }} utenti totali.
         </div>
 
         <div class="flex items-center gap-1.5">
           <UPagination
-            :default-page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
-            :items-per-page="table?.tableApi?.getState().pagination.pageSize"
-            :total="table?.tableApi?.getFilteredRowModel().rows.length"
-            @update:page="(p: number) => table?.tableApi?.setPageIndex(p - 1)"
+            :default-page="page"
+            :items-per-page="pageSize"
+            :total="totalItems"
+            @update:page="(p: number) => { page = p }"
           />
         </div>
       </div>
