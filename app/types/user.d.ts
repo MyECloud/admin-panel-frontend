@@ -6,6 +6,25 @@ export type DocumentsStatus
     | 'pending'
     | 'verified'
 
+export interface UserPremium {
+  isActive: boolean
+  expiration: string | null
+}
+
+export type ApiUserType = 'escort' | 'user'
+
+export interface ApiUser {
+  id: number
+  name: string
+  username: string
+  isActive: boolean
+  avatarUrl: string | null
+  premium: UserPremium
+  type: ApiUserType
+  supporter: boolean | null
+  newContents: boolean
+}
+
 export interface User {
   id: number
   username: string
@@ -24,4 +43,26 @@ export interface User {
   hasDonated: boolean
 
   profileCode: string
+}
+
+export interface PaginatedMeta {
+  totalItems: number
+  itemCount: number
+  itemsPerPage: number
+  totalPages: number
+  currentPage: number
+}
+
+export interface PaginatedLinks {
+  first: string
+  previous: string
+  next: string
+  last: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  meta: PaginatedMeta
+  links: PaginatedLinks
+  totalResults: number
 }
