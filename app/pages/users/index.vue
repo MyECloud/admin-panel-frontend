@@ -19,7 +19,7 @@ const columnFilters = ref([{
   value: ''
 }])
 const columnVisibility = ref()
-const rowSelection = ref({ 1: true })
+const rowSelection = ref({})
 
 const data = ref<User[]>([
   {
@@ -111,8 +111,8 @@ const columns: TableColumn<User>[] = [
     header: 'ID'
   },
   {
-    accessorKey: 'name',
-    header: 'Nome',
+    accessorKey: 'username',
+    header: 'Username',
     cell: ({ row }) => {
       const NuxtLink = resolveComponent('NuxtLink')
       return h(NuxtLink, {
@@ -124,21 +124,21 @@ const columns: TableColumn<User>[] = [
           size: 'lg'
         }),
         h('div', undefined, [
-          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
-          h('p', { class: '' }, `@${row.original.name}`)
+          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.username),
+          h('p', { class: '' }, `@${row.original.username}`)
         ])
       ])
     }
   },
   {
-    accessorKey: 'email',
+    accessorKey: 'type',
     header: ({ column }) => {
       const isSorted = column.getIsSorted()
 
       return h(UButton, {
         color: 'neutral',
         variant: 'ghost',
-        label: 'Email',
+        label: 'Tipologia',
         icon: isSorted
           ? isSorted === 'asc'
             ? 'i-lucide-arrow-up-narrow-wide'
@@ -151,20 +151,63 @@ const columns: TableColumn<User>[] = [
   },
   {
     accessorKey: 'status',
-    header: 'Stato',
+    header: 'Premium Attivo',
     filterFn: 'equals',
     cell: ({ row }) => {
       const color = {
-        subscribed: 'success' as const,
-        unsubscribed: 'error' as const,
-        bounced: 'warning' as const
+        subscribed: 'success',
+        unsubscribed: 'error',
+        bounced: 'warning'
       }[row.original.status]
 
-      return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () =>
+      return h(UBadge, { variant: 'subtle', color }, () =>
         row.original.status
       )
     }
   },
+  {
+    accessorKey: 'supporter',
+    header: 'Supporter',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.supporter ? 'success' : 'neutral'
+        },
+        () => (row.original.supporter ? 'Sì' : 'No')
+      )
+    }
+  },
+  {
+    accessorKey: 'documentsVerified',
+    header: 'Documenti verificati',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.documentsVerified ? 'success' : 'error'
+        },
+        () => (row.original.documentsVerified ? 'Verificati' : 'Non verificati')
+      )
+    }
+  },
+  {
+    accessorKey: 'newContents',
+    header: 'Nuovi contenuti',
+    cell: ({ row }) => {
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: row.original.newContents ? 'primary' : 'neutral'
+        },
+        () => (row.original.newContents ? 'Sì' : 'No')
+      )
+    }
+  },
+
   {
     id: 'actions',
     cell: ({ row }) => {
@@ -194,25 +237,37 @@ const columns: TableColumn<User>[] = [
 
 const statusFilter = ref('all')
 
-watch(() => statusFilter.value, (newVal) => {
-  if (!table?.value?.tableApi) return
+watch(statusFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'status' && f.id !== 'newContents'
+  )
 
-  const statusColumn = table.value.tableApi.getColumn('status')
-  if (!statusColumn) return
+  if (newVal === 'subscribed') {
+    columnFilters.value.push({ id: 'status', value: 'subscribed' })
+  }
 
-  if (newVal === 'all') {
-    statusColumn.setFilterValue(undefined)
-  } else {
-    statusColumn.setFilterValue(newVal)
+  if (newVal === 'unsubscribed') {
+    columnFilters.value.push({ id: 'status', value: 'unsubscribed' })
+  }
+
+  if (newVal === 'recent') {
+    columnFilters.value.push({ id: 'newContents', value: true })
   }
 })
 
-const email = computed({
+const selectedUsers = computed<User>((): User => {
+  if (!table?.value?.tableApi) return []
+  return table.value.tableApi
+    .getFilteredSelectedRowModel()
+    .rows.map((row: Row<User>) => row.original)
+})
+
+const usernameFilter = computed({
   get: (): string => {
-    return (table.value?.tableApi?.getColumn('email')?.getFilterValue() as string) || ''
+    return (table.value?.tableApi?.getColumn('username')?.getFilterValue() as string) || ''
   },
   set: (value: string) => {
-    table.value?.tableApi?.getColumn('email')?.setFilterValue(value || undefined)
+    table.value?.tableApi?.getColumn('username')?.setFilterValue(value || undefined)
   }
 })
 
@@ -235,14 +290,44 @@ const pagination = ref({
     <template #body>
       <div class="flex flex-wrap items-center justify-between gap-1.5">
         <UInput
-          v-model="email"
+          v-model="usernameFilter"
           class="max-w-sm"
           icon="i-lucide-search"
           placeholder="Cerca utenti..."
         />
 
         <div class="flex flex-wrap items-center gap-1.5">
-          <EcUsersDeleteModal :count="table?.tableApi?.getFilteredSelectedRowModel().rows.length">
+          <EcUsersAddPremiumModal :users="selectedUsers">
+            <UButton
+              v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+              label="Aggiungi premium"
+              color="success"
+              variant="subtle"
+              icon="i-lucide-plus"
+            >
+              <template #trailing>
+                <UKbd>
+                  {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}
+                </UKbd>
+              </template>
+            </UButton>
+          </EcUsersAddPremiumModal>
+          <EcUsersDisableProfileModal :users="selectedUsers">
+            <UButton
+              v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
+              label="Disattiva profilo"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-plus"
+            >
+              <template #trailing>
+                <UKbd>
+                  {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}
+                </UKbd>
+              </template>
+            </UButton>
+          </EcUsersDisableProfileModal>
+          <EcUsersDeleteModal :users="selectedUsers">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"
@@ -264,7 +349,7 @@ const pagination = ref({
               { label: 'Tutti', value: 'all' },
               { label: 'Premium', value: 'subscribed' },
               { label: 'Non premium', value: 'unsubscribed' },
-              { label: 'Aggiornati di recente', value: 'unsubscribed' }
+              { label: 'Aggiornati di recente', value: 'recent' }
             ]"
             :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
             placeholder="Filter status"

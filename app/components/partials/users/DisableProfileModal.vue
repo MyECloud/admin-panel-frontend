@@ -16,8 +16,7 @@ async function onSubmit() {
 <template>
   <UModal
     v-model:open="open"
-    :title="`Cancella ${users.length} utenti`"
-    :description="`Sei sicuro? Questa operazione non può essere annullata.`"
+    :title="`Disabilita ${users.length} utenti`"
   >
     <slot />
 
@@ -37,7 +36,7 @@ async function onSubmit() {
           @click="open = false"
         />
         <UButton
-          label="Delete"
+          label="Disabilita"
           color="error"
           variant="solid"
           loading-auto
