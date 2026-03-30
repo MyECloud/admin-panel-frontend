@@ -160,14 +160,24 @@ const columns: TableColumn<ApiUser>[] = [
     header: 'Premium',
     cell: ({ row }) => {
       const isPremium = row.original.premium?.isActive
-      return h(
-        UBadge,
-        {
-          variant: 'subtle',
-          color: isPremium ? 'success' : 'neutral'
-        },
-        () => (isPremium ? 'Attivo' : 'No')
-      )
+      const expiration = row.original.premium?.expiration
+      const formattedDate = expiration
+        ? new Date(expiration).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : null
+      return h('div', { class: 'flex flex-col' }, [
+        h(
+          UBadge,
+          {
+            variant: 'subtle',
+            color: isPremium ? 'success' : 'neutral'
+          },
+          () => (isPremium ? 'Attivo' : 'No')
+        ),
+        ...(isPremium && formattedDate
+          ? [h('span', { class: 'text-xs text-muted mt-0.5' }, `Scade: ${formattedDate}`)]
+          : []
+        )
+      ])
     }
   },
   {
@@ -305,7 +315,7 @@ const pagination = computed({
         />
 
         <div class="flex flex-wrap items-center gap-1.5">
-          <EcUsersAddPremiumModal :users="selectedUsers">
+          <EcUsersAddPremiumModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Aggiungi premium"

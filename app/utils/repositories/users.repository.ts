@@ -3,6 +3,7 @@ import type { PaginatedResponse, ApiUser } from '~/types/user'
 
 enum API_USERS_URLs {
   LIST = '/admin/users',
+  SUBSCRIPTION = '/admin/users/{id}/subscription',
 }
 
 export interface UsersQueryParams {
@@ -20,5 +21,13 @@ export function usersRepository(fetch: $Fetch) {
     })
   }
 
-  return { list }
+  async function addSubscription(userId: number, additionalMonths: number) {
+    const url = API_USERS_URLs.SUBSCRIPTION.replace('{id}', userId.toString())
+    return fetch(url, {
+      method: 'PUT',
+      body: { additionalMonths },
+    })
+  }
+
+  return { list, addSubscription }
 }
