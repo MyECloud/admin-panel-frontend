@@ -3,18 +3,21 @@ import type { ApiUser } from '~/types/user'
 
 const props = withDefaults(defineProps<{
   users?: ApiUser[]
+  open?: boolean
 }>(), {
-  users: () => []
+  users: () => [],
+  open: false,
 })
 
 const emit = defineEmits<{
   success: []
+  'update:open': [value: boolean]
 }>()
 
 const { $api } = useNuxtApp()
 const toast = useToast()
 
-const open = ref(false)
+const open = useVModel(props, 'open', emit, { defaultValue: false, passive: true })
 const additionalMonths = ref(1)
 const loading = ref(false)
 

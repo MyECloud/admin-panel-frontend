@@ -1,18 +1,78 @@
 <script setup lang="ts">
-const route = useRoute()
-const userName = ref(`Utente ${route.params.id}`)
-const isSuspended = ref(false)
-const isSuspendModalOpen = ref(false)
-const isDeleteModalOpen = ref(false)
-const deleteModalState = ref({
-  title: 'Elimina account',
-  description: 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente',
-  itemName: ''
-})
+import type { ApiUserDetail } from '~/types/user'
 
-const openDeleteModal = (title: string, description: string, itemName: string) => {
-  deleteModalState.value = { title, description, itemName }
-  isDeleteModalOpen.value = true
+const route = useRoute()
+const { $api } = useNuxtApp()
+const toast = useToast()
+
+const userId = Number(route.params.id)
+
+const { data: user, status, refresh } = await useAsyncData<ApiUserDetail>(
+  `user-detail-${userId}`,
+  () => $api<ApiUserDetail>(`/admin/users/${userId}`),
+  { server: false }
+)
+
+// --- Suspend modal ---
+const isSuspendModalOpen = ref(false)
+
+// --- Delete account modal ---
+const isDeleteModalOpen = ref(false)
+
+// --- Add Premium modal ---
+const isAddPremiumModalOpen = ref(false)
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('it-IT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  })
+}
+
+function boolLabel(val: boolean) {
+  return val ? 'Sì' : 'No'
+}
+
+function docTypeLabel(type: string): string {
+  if (type === 'front') return 'Fronte'
+  if (type === 'back') return 'Retro'
+  return type
+}
+
+async function onDeleteUser() {
+  try {
+    await $api(`/admin/users/${userId}`, { method: 'DELETE' })
+    toast.add({ title: 'Utente eliminato', color: 'success' })
+    navigateTo('/users')
+  }
+  catch {
+    toast.add({ title: 'Errore durante l\'eliminazione', color: 'error' })
+  }
+  finally {
+    isDeleteModalOpen.value = false
+  }
+}
+
+async function onToggleSuspend() {
+  try {
+    await $api(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: { isActive: !user.value?.isActive },
+    })
+    toast.add({
+      title: user.value?.isActive ? 'Utente sospeso' : 'Utente riattivato',
+      color: 'success',
+    })
+    await refresh()
+  }
+  catch {
+    toast.add({ title: 'Errore durante l\'operazione', color: 'error' })
+  }
+  finally {
+    isSuspendModalOpen.value = false
+  }
 }
 </script>
 
@@ -28,14 +88,32 @@ const openDeleteModal = (title: string, description: string, itemName: string) =
     </template>
 
     <template #body>
-      <div class="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-8">
-        <div class="flex items-center justify-center gap-3 w-full">
+      <!-- Loading state -->
+      <div v-if="status === 'pending'" class="flex items-center justify-center h-64">
+        <UIcon name="i-heroicons-arrow-path" class="animate-spin w-8 h-8 text-primary-500" />
+      </div>
+
+      <!-- Error state -->
+      <div v-else-if="status === 'error'" class="flex flex-col items-center justify-center h-64 gap-4">
+        <UIcon name="i-heroicons-exclamation-triangle" class="w-10 h-10 text-red-500" />
+        <p class="text-gray-500 dark:text-gray-400">
+          Impossibile caricare i dati dell'utente.
+        </p>
+        <UButton label="Riprova" color="primary" variant="solid" @click="refresh()" />
+      </div>
+
+      <!-- Content -->
+      <div v-else-if="user" class="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-8">
+
+        <!-- Action buttons -->
+        <div class="flex items-center justify-end gap-3 w-full">
           <UButton
             icon="i-heroicons-user-minus"
-            :color="isSuspended ? 'error' : 'neutral'"
+            :color="user.isActive ? 'neutral' : 'error'"
             variant="ghost"
-            class="transition-colors hover:text-error dark:hover:text-error disabled:opacity-100"
-            :class="{ 'text-error dark:text-error': isSuspended, 'text-primary-500 dark:text-primary-400': !isSuspended }"
+            class="transition-colors hover:text-error dark:hover:text-error"
+            :class="{ 'text-error dark:text-error': !user.isActive, 'text-primary-500 dark:text-primary-400': user.isActive }"
+            :title="user.isActive ? 'Sospendi utente' : 'Riattiva utente'"
             @click="isSuspendModalOpen = true"
           />
           <UButton
@@ -43,213 +121,203 @@ const openDeleteModal = (title: string, description: string, itemName: string) =
             color="neutral"
             variant="ghost"
             class="transition-colors hover:text-error dark:hover:text-error text-primary-500 dark:text-primary-400"
-            @click="openDeleteModal('Elimina account', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente l\'utente', userName)"
+            title="Elimina utente"
+            @click="isDeleteModalOpen = true"
           />
         </div>
 
-        <!-- Nome Utente -->
-        <UCard class="flex items-center justify-center font-bold text-xl py-2">
-          {{ userName }}
-        </UCard>
-
-        <!-- Documents States -->
+        <!-- ── Sezione Anagrafica ── -->
         <UCard>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-4 text-center">
-            <div class="flex flex-col gap-2 sm:gap-4">
-              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
-                Documenti<br>Inviati
+          <div class="flex flex-col sm:flex-row items-center gap-6 p-2">
+            <!-- Avatar -->
+            <UAvatar
+              :src="user.avatarUrl ?? undefined"
+              :alt="user.name"
+              size="3xl"
+              class="ring-2 ring-primary-400 dark:ring-primary-500 shrink-0"
+            />
+
+            <!-- Info -->
+            <div class="flex flex-col gap-3 w-full">
+              <!-- Nome e username -->
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ user.name }}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">@{{ user.username }}</span>
               </div>
-              <div class="text-green-500 font-bold text-sm sm:text-base">
-                Si
+
+              <!-- Badges riga -->
+              <div class="flex flex-wrap gap-2">
+                <!-- ID -->
+                <UBadge color="neutral" variant="subtle" class="font-mono text-xs">
+                  ID #{{ user.id }}
+                </UBadge>
+
+                <!-- Tipologia -->
+                <UBadge
+                  :color="user.type === 'escort' ? 'primary' : 'neutral'"
+                  variant="subtle"
+                  class="capitalize"
+                >
+                  {{ user.type }}
+                </UBadge>
+
+                <!-- Stato profilo -->
+                <UBadge
+                  :color="user.isActive ? 'success' : 'error'"
+                  variant="subtle"
+                >
+                  {{ user.isActive ? 'Attivo' : 'Sospeso' }}
+                </UBadge>
+
+                <!-- Premium -->
+                <UBadge
+                  v-if="user.isPremium"
+                  color="warning"
+                  variant="subtle"
+                >
+                  Premium
+                </UBadge>
               </div>
-            </div>
-            <div class="flex flex-col gap-2 sm:gap-4">
-              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
-                Documenti<br>Ricevuti
-              </div>
-              <div class="text-green-500 font-bold text-sm sm:text-base">
-                Si
-              </div>
-            </div>
-            <div class="flex flex-col gap-2 sm:gap-4">
-              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
-                Documenti<br>Archiviati
-              </div>
-              <div class="text-red-500 font-bold text-sm sm:text-base">
-                No
-              </div>
-            </div>
-            <div class="flex flex-col gap-2 sm:gap-4">
-              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
-                Documenti<br>verificati
-              </div>
-              <div class="text-red-500 font-bold text-sm sm:text-base">
-                No
+
+              <!-- Supporter -->
+              <div class="text-sm text-gray-600 dark:text-gray-300">
+                <span class="font-semibold text-primary-500 dark:text-primary-400">Supporter: </span>
+                <span>{{ user.supporter ?? '—' }}</span>
               </div>
             </div>
           </div>
         </UCard>
 
-        <!-- Premium section header -->
-        <div class="text-center font-bold text-lg text-primary-700 dark:text-primary-300 mt-2">
-          Premium
+        <!-- ── Sezione Subscription ── -->
+        <div class="text-sm font-bold uppercase tracking-wide text-primary-500 dark:text-primary-400 px-1">
+          Subscription (Premium)
         </div>
 
         <UCard>
-          <!-- Headers -->
-          <div class="grid grid-cols-3 gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-primary-50/50 dark:bg-primary-900/10 rounded-t-lg">
-            <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Status
+          <div v-if="user.subscription" class="flex flex-col gap-0">
+            <!-- Header -->
+            <div class="grid grid-cols-3 gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-primary-50/50 dark:bg-primary-900/10 rounded-t-lg">
+              <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
+                Status
+              </div>
+              <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
+                Data Scadenza
+              </div>
+              <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
+                Azioni
+              </div>
             </div>
-            <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Data Scadenza
-            </div>
-            <div class="text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Azioni
+            <!-- Row -->
+            <div class="grid grid-cols-3 gap-4 px-6 py-4 items-center">
+              <div
+                :class="user.subscription.isActive ? 'text-green-500' : 'text-red-500'"
+                class="font-bold text-center"
+              >
+                {{ user.subscription.isActive ? 'Attiva' : 'Scaduta' }}
+              </div>
+              <div class="text-gray-600 dark:text-gray-300 text-center text-sm">
+                {{ formatDate(user.subscription.expiration) }}
+              </div>
+              <div class="flex items-center justify-center">
+                <UButton
+                  icon="i-heroicons-plus"
+                  color="success"
+                  variant="ghost"
+                  title="Aggiungi mesi premium"
+                  @click="isAddPremiumModalOpen = true"
+                />
+              </div>
             </div>
           </div>
-          <!-- Row -->
-          <div class="grid grid-cols-3 gap-4 px-6 py-4 items-center">
-            <div class="text-green-500 font-bold text-center">
-              Attivo
-            </div>
-            <div class="text-gray-600 dark:text-gray-300 text-center text-sm">
-              01/10/26
-            </div>
-            <div class="flex items-center justify-center gap-2">
-              <UButton
-                icon="i-heroicons-trash"
-                color="neutral"
-                variant="ghost"
-                @click="openDeleteModal('Rimuovi stato Premium', 'Vuoi davvero rimuovere lo stato Premium per', userName)"
-              />
-              <UButton icon="i-heroicons-pencil-square" color="neutral" variant="ghost" />
-            </div>
+
+          <div v-else class="flex flex-col items-center gap-4 py-6">
+            <p class="text-sm text-gray-400 dark:text-gray-500">
+              Nessuna subscription attiva.
+            </p>
+            <UButton
+              icon="i-heroicons-plus"
+              label="Aggiungi Premium"
+              color="success"
+              variant="solid"
+              size="sm"
+              @click="isAddPremiumModalOpen = true"
+            />
           </div>
         </UCard>
 
-        <!-- Tabs Section -->
+        <!-- ── Sezione Documenti ── -->
+        <div class="text-sm font-bold uppercase tracking-wide text-primary-500 dark:text-primary-400 px-1">
+          Documenti
+        </div>
+
         <UCard>
-          <div class="grid grid-cols-3 gap-4 items-center h-full">
-            <div class="text-center text-sm font-bold text-primary-900 dark:text-primary-100 leading-tight">
-              Testi<br>campo libero
-            </div>
-            <div class="text-center text-sm font-bold text-primary-900 dark:text-primary-100">
-              Media
-            </div>
-            <div class="flex justify-center">
-              <div class="bg-primary-50 dark:bg-primary-900/30 text-primary-500 dark:text-primary-400 px-4 py-2 rounded-lg text-sm font-bold text-center leading-tight">
-                Verifica<br>Documenti
+          <!-- Status flags -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-gray-100 dark:border-gray-800 pb-6 mb-6">
+            <div
+              v-for="(flag, label) in {
+                'Inviati': user.documents.sent,
+                'Ricevuti': user.documents.received,
+                'Archiviati': user.documents.archived,
+                'Verificati': user.documents.verified,
+              }"
+              :key="label"
+              class="flex flex-col gap-2"
+            >
+              <div class="text-xs sm:text-sm font-bold text-primary-500 dark:text-primary-400 leading-tight">
+                Documenti<br>{{ label }}
+              </div>
+              <div :class="flag ? 'text-green-500' : 'text-red-500'" class="font-bold text-sm sm:text-base">
+                {{ boolLabel(flag) }}
               </div>
             </div>
           </div>
+
+          <!-- Document images -->
+          <div v-if="user.documents.items.length > 0" class="flex flex-col gap-4">
+            <div
+              v-for="doc in user.documents.items"
+              :key="doc.id"
+              class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+            >
+              <!-- Thumbnail documento (formato carta d'identità ~1.58:1) -->
+              <a :href="doc.url" target="_blank" rel="noopener noreferrer" class="shrink-0">
+                <NuxtImg
+                  :src="doc.url"
+                  :alt="doc.name"
+                  width="252"
+                  height="160"
+                  class="rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity"
+                  style="width:252px; height:160px"
+                />
+              </a>
+              <div class="flex flex-col gap-1 text-sm">
+                <span class="font-semibold text-primary-600 dark:text-primary-400">
+                  {{ docTypeLabel(doc.type) }}
+                </span>
+                <span class="text-gray-700 dark:text-gray-300 font-mono text-xs">{{ doc.name }}</span>
+                <span class="text-gray-500 dark:text-gray-400 text-xs">
+                  Inviato il {{ formatDate(doc.submittedAt) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <p v-else class="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+            Nessun documento caricato.
+          </p>
         </UCard>
 
-        <!-- Files List -->
-        <UCard>
-          <!-- Table Headers -->
-          <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-primary-50/50 dark:bg-primary-900/10 rounded-t-lg">
-            <div class="col-span-5 text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Nome File
-            </div>
-            <div class="col-span-4 text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Previw
-            </div>
-            <div class="col-span-3 text-sm font-semibold text-primary-500 dark:text-primary-400 text-center">
-              Azioni
-            </div>
-          </div>
-
-          <!-- Rows -->
-          <div class="flex flex-col">
-            <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-800 items-center">
-              <div class="col-span-5 flex items-center gap-3">
-                <UIcon name="i-heroicons-bars-4" class="text-gray-400 dark:text-gray-500 w-5 h-5 flex-shrink-0 cursor-move" />
-                <UCheckbox />
-                <span class="text-sm text-gray-600 dark:text-gray-300 truncate">Nome file</span>
-              </div>
-              <div class="col-span-4 flex justify-center">
-                <div class="w-16 h-10 bg-gray-300 dark:bg-gray-700 rounded" />
-              </div>
-              <div class="col-span-3 flex items-center justify-center gap-2">
-                <UButton
-                  icon="i-heroicons-check"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                />
-                <UButton
-                  icon="i-heroicons-trash"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 1')"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-800 items-center">
-              <div class="col-span-5 flex items-center gap-3">
-                <UIcon name="i-heroicons-bars-4" class="text-gray-400 dark:text-gray-500 w-5 h-5 flex-shrink-0 cursor-move" />
-                <UCheckbox />
-                <span class="text-sm text-gray-600 dark:text-gray-300 truncate">Nome file</span>
-              </div>
-              <div class="col-span-4 flex justify-center">
-                <div class="w-16 h-10 bg-gray-300 dark:bg-gray-700 rounded" />
-              </div>
-              <div class="col-span-3 flex items-center justify-center gap-2">
-                <UButton
-                  icon="i-heroicons-check"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                />
-                <UButton
-                  icon="i-heroicons-trash"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 2')"
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-4 px-6 py-4 items-center">
-              <div class="col-span-5 flex items-center gap-3">
-                <UIcon name="i-heroicons-bars-4" class="text-gray-400 dark:text-gray-500 w-5 h-5 flex-shrink-0 cursor-move" />
-                <UCheckbox />
-                <span class="text-sm text-gray-600 dark:text-gray-300 truncate">Nome file</span>
-              </div>
-              <div class="col-span-4 flex justify-center">
-                <div class="w-16 h-10 bg-gray-300 dark:bg-gray-700 rounded" />
-              </div>
-              <div class="col-span-3 flex items-center justify-center gap-2">
-                <UButton
-                  icon="i-heroicons-check"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                />
-                <UButton
-                  icon="i-heroicons-trash"
-                  color="neutral"
-                  variant="ghost"
-                  class="text-gray-700 dark:text-gray-300"
-                  @click="openDeleteModal('Elimina file', 'Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente il file', 'Nome file 3')"
-                />
-              </div>
-            </div>
-          </div>
-        </UCard>
       </div>
     </template>
   </UDashboardPanel>
 
-  <!-- Modal for Suspend/Unsuspend -->
+  <!-- Modal Sospendi / Riattiva -->
   <UModal
     v-model:open="isSuspendModalOpen"
     title="Conferma azione"
-    :description="`Sei sicuro di voler ${isSuspended ? 'sbloccare' : 'sospendere'} l'utente ${userName}?`"
+    :description="user?.isActive
+      ? `Sei sicuro di voler sospendere l'utente ${user?.name}?`
+      : `Sei sicuro di voler riattivare l'utente ${user?.name}?`"
     :overlay="true"
     :ui="{ overlay: 'bg-black/50 backdrop-blur-sm' }"
   >
@@ -258,18 +326,21 @@ const openDeleteModal = (title: string, description: string, itemName: string) =
         <UButton color="neutral" variant="ghost" @click="isSuspendModalOpen = false">
           Annulla
         </UButton>
-        <UButton :color="isSuspended ? 'success' : 'error'" @click="isSuspended = !isSuspended; isSuspendModalOpen = false">
-          {{ isSuspended ? 'Sblocca utente' : 'Sospendi utente' }}
+        <UButton
+          :color="user?.isActive ? 'error' : 'success'"
+          @click="onToggleSuspend"
+        >
+          {{ user?.isActive ? 'Sospendi utente' : 'Riattiva utente' }}
         </UButton>
       </div>
     </template>
   </UModal>
 
-  <!-- Modal for Delete -->
+  <!-- Modal Elimina utente -->
   <UModal
     v-model:open="isDeleteModalOpen"
-    :title="deleteModalState.title"
-    :description="`${deleteModalState.description} ${deleteModalState.itemName}?`"
+    title="Elimina account"
+    :description="`Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente l'utente ${user?.name}?`"
     :overlay="true"
     :ui="{ overlay: 'bg-black/50 backdrop-blur-sm' }"
   >
@@ -278,10 +349,18 @@ const openDeleteModal = (title: string, description: string, itemName: string) =
         <UButton color="neutral" variant="ghost" @click="isDeleteModalOpen = false">
           Annulla
         </UButton>
-        <UButton color="error" @click="isDeleteModalOpen = false">
+        <UButton color="error" @click="onDeleteUser">
           Elimina utente
         </UButton>
       </div>
     </template>
   </UModal>
+
+  <!-- Modal Aggiungi Premium -->
+  <EcUsersAddPremiumModal
+    v-if="user"
+    v-model:open="isAddPremiumModalOpen"
+    :users="[{ id: user.id, name: user.name, username: user.username, isActive: user.isActive, avatarUrl: user.avatarUrl, type: user.type, supporter: user.supporter, newContents: user.newContents, premium: user.subscription ? { isActive: user.subscription.isActive, expiration: user.subscription.expiration } : { isActive: false, expiration: null } }]"
+    @success="refresh()"
+  />
 </template>
