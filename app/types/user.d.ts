@@ -1,5 +1,40 @@
 export type UserStatus = 'subscribed' | 'unsubscribed' | 'bounced'
 
+export interface ApiDocumentItem {
+  id: number
+  type: 'front' | 'back' | string
+  name: string
+  url: string
+  submittedAt: string
+}
+
+export interface ApiUserDocuments {
+  sent: boolean
+  received: boolean
+  archived: boolean
+  verified: boolean
+  items: ApiDocumentItem[]
+}
+
+export interface ApiUserSubscription {
+  isActive: boolean
+  expiration: string | null
+}
+
+export interface ApiUserDetail {
+  id: number
+  isActive: boolean
+  type: ApiUserType
+  username: string
+  name: string
+  avatarUrl: string | null
+  isPremium: boolean
+  supporter: string | null
+  newContents: boolean
+  documents: ApiUserDocuments
+  subscription: ApiUserSubscription | null
+}
+
 // Document Status type
 export type DocumentsStatus
   = | 'not_sent'

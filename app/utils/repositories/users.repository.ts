@@ -1,8 +1,9 @@
 import type { $Fetch } from 'nitropack'
-import type { PaginatedResponse, ApiUser } from '~/types/user'
+import type { PaginatedResponse, ApiUser, ApiUserDetail } from '~/types/user'
 
 enum API_USERS_URLs {
   LIST = '/admin/users',
+  DETAIL = '/admin/users/{id}',
   SUBSCRIPTION = '/admin/users/{id}/subscription',
 }
 
@@ -21,6 +22,11 @@ export function usersRepository(fetch: $Fetch) {
     })
   }
 
+  async function getById(userId: number): Promise<ApiUserDetail> {
+    const url = API_USERS_URLs.DETAIL.replace('{id}', userId.toString())
+    return fetch<ApiUserDetail>(url)
+  }
+
   async function addSubscription(userId: number, additionalMonths: number) {
     const url = API_USERS_URLs.SUBSCRIPTION.replace('{id}', userId.toString())
     return fetch(url, {
@@ -29,5 +35,5 @@ export function usersRepository(fetch: $Fetch) {
     })
   }
 
-  return { list, addSubscription }
+  return { list, getById, addSubscription }
 }
