@@ -22,6 +22,44 @@ const isDeleteModalOpen = ref(false)
 // --- Add Premium modal ---
 const isAddPremiumModalOpen = ref(false)
 
+// --- Documents actions ---
+const isConfirmingDocs = ref(false)
+const isRejectingDocs = ref(false)
+const rejectedDocumentIds = ref(new Set<number>())
+
+async function onConfirmDocuments() {
+  isConfirmingDocs.value = true
+  try {
+    await $api(`/admin/escorts/${userId}/confirm`, { method: 'PATCH' })
+    toast.add({ title: 'Documenti confermati', color: 'success' })
+    rejectedDocumentIds.value = new Set()
+    await refresh()
+  }
+  catch {
+    toast.add({ title: 'Errore durante la conferma dei documenti', color: 'error' })
+  }
+  finally {
+    isConfirmingDocs.value = false
+  }
+}
+
+async function onRejectDocuments() {
+  isRejectingDocs.value = true
+  try {
+    rejectedDocumentIds.value = new Set(user.value?.documents.items.map(d => d.id) ?? [])
+    await $api(`/admin/escorts/${userId}/reject`, { method: 'PATCH' })
+    toast.add({ title: 'Documenti rifiutati', color: 'success' })
+    await refresh()
+  }
+  catch {
+    rejectedDocumentIds.value = new Set()
+    toast.add({ title: 'Errore durante il rifiuto dei documenti', color: 'error' })
+  }
+  finally {
+    isRejectingDocs.value = false
+  }
+}
+
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -251,6 +289,28 @@ async function onToggleSuspend() {
         </div>
 
         <UCard>
+          <!-- Document action buttons (solo per escort) -->
+          <div v-if="user.type === 'escort'" class="flex items-center justify-end gap-3 mb-6">
+            <UButton
+              icon="i-heroicons-x-circle"
+              label="Rifiuta documenti"
+              color="error"
+              variant="soft"
+              size="sm"
+              :loading="isRejectingDocs"
+              @click="onRejectDocuments"
+            />
+            <UButton
+              icon="i-heroicons-check-circle"
+              label="Conferma documenti"
+              color="success"
+              variant="soft"
+              size="sm"
+              :loading="isConfirmingDocs"
+              @click="onConfirmDocuments"
+            />
+          </div>
+
           <!-- Status flags -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-gray-100 dark:border-gray-800 pb-6 mb-6">
             <div
@@ -280,16 +340,24 @@ async function onToggleSuspend() {
               class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/40"
             >
               <!-- Thumbnail documento (formato carta d'identità ~1.58:1) -->
-              <a :href="doc.url" target="_blank" rel="noopener noreferrer" class="shrink-0">
-                <NuxtImg
-                  :src="doc.url"
-                  :alt="doc.name"
-                  width="252"
-                  height="160"
-                  class="rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-opacity"
-                  style="width:252px; height:160px"
-                />
-              </a>
+              <div class="relative shrink-0">
+                <a :href="doc.url" target="_blank" rel="noopener noreferrer">
+                  <NuxtImg
+                    :src="doc.url"
+                    :alt="doc.name"
+                    width="252"
+                    height="160"
+                    :class="['rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-all', { 'grayscale': rejectedDocumentIds.has(doc.id) }]"
+                    style="width:252px; height:160px"
+                  />
+                </a>
+                <div
+                  v-if="rejectedDocumentIds.has(doc.id)"
+                  class="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 pointer-events-none"
+                >
+                  <span class="text-white font-bold text-base uppercase tracking-widest select-none">Rifiutati</span>
+                </div>
+              </div>
               <div class="flex flex-col gap-1 text-sm">
                 <span class="font-semibold text-primary-600 dark:text-primary-400">
                   {{ docTypeLabel(doc.type) }}
