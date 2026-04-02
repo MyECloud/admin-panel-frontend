@@ -65,12 +65,34 @@ function getRowItems(row: Row<ApiUser>) {
     {
       label: 'Sospendi',
       icon: 'i-lucide-user-x',
-      onSelect() {
-        navigator.clipboard.writeText(row.original.id.toString())
-        toast.add({
-          title: 'Copied to clipboard',
-          description: 'Customer ID copied to clipboard'
-        })
+      async onSelect() {
+        try {
+          const user = row.original
+
+          const newStatus = !user.isActive
+
+          await $api(`/admin/users/${user.id}/status`, {
+            method: 'PUT', // o PUT/POST in base alla tua API
+            body: {
+              active: newStatus
+            }
+          })
+
+          toast.add({
+            title: newStatus ? 'Utente attivato' : 'Utente sospeso',
+            description: `Lo stato dell'utente è stato aggiornato.`
+          })
+
+          await refresh() // 🔥 aggiorna la tabella
+        } catch (err) {
+          console.error('[Users] Error updating status:', err)
+
+          toast.add({
+            title: 'Errore',
+            description: 'Impossibile aggiornare lo stato utente',
+            color: 'error'
+          })
+        }
       }
     },
     {
@@ -415,7 +437,9 @@ const pagination = computed({
 
       <div v-if="status === 'pending'" class="flex flex-col items-center justify-center py-12 gap-3">
         <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
-        <p class="text-sm text-muted">Caricamento utenti...</p>
+        <p class="text-sm text-muted">
+          Caricamento utenti...
+        </p>
       </div>
 
       <UTable
