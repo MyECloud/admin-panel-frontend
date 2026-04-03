@@ -15,12 +15,33 @@ const { data: user, status, refresh } = await useAsyncData<ApiUserDetail>(
 
 // --- Suspend modal ---
 const isSuspendModalOpen = ref(false)
+const isTogglingStatus = ref(false)
 
 // --- Delete account modal ---
 const isDeleteModalOpen = ref(false)
+const isDeletingUser = ref(false)
 
 // --- Add Premium modal ---
 const isAddPremiumModalOpen = ref(false)
+
+// --- Impersonation ---
+const isImpersonating = ref(false)
+
+async function onImpersonate() {
+  isImpersonating.value = true
+  try {
+    const res = await $api<{ accessToken: string }>(`/admin/users/${userId}/authToken`, { method: 'POST' })
+    const url = new URL('https://test.escort-cloud.com')
+    url.searchParams.set('auth.token', res.accessToken)
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+  }
+  catch {
+    toast.add({ title: 'Errore durante la generazione del token', color: 'error' })
+  }
+  finally {
+    isImpersonating.value = false
+  }
+}
 
 // --- Documents actions ---
 const isConfirmingDocs = ref(false)
@@ -80,6 +101,7 @@ function docTypeLabel(type: string): string {
 }
 
 async function onDeleteUser() {
+  isDeletingUser.value = true
   try {
     await $api(`/admin/users/${userId}`, { method: 'DELETE' })
     toast.add({ title: 'Utente eliminato', color: 'success' })
@@ -89,15 +111,17 @@ async function onDeleteUser() {
     toast.add({ title: 'Errore durante l\'eliminazione', color: 'error' })
   }
   finally {
+    isDeletingUser.value = false
     isDeleteModalOpen.value = false
   }
 }
 
 async function onToggleSuspend() {
+  isTogglingStatus.value = true
   try {
-    await $api(`/admin/users/${userId}`, {
-      method: 'PATCH',
-      body: { isActive: !user.value?.isActive },
+    await $api(`/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: { active: !user.value?.isActive },
     })
     toast.add({
       title: user.value?.isActive ? 'Utente sospeso' : 'Utente riattivato',
@@ -109,6 +133,7 @@ async function onToggleSuspend() {
     toast.add({ title: 'Errore durante l\'operazione', color: 'error' })
   }
   finally {
+    isTogglingStatus.value = false
     isSuspendModalOpen.value = false
   }
 }
@@ -144,24 +169,51 @@ async function onToggleSuspend() {
       <div v-else-if="user" class="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-8">
 
         <!-- Action buttons -->
-        <div class="flex items-center justify-end gap-3 w-full">
-          <UButton
-            icon="i-heroicons-user-minus"
-            :color="user.isActive ? 'neutral' : 'error'"
-            variant="ghost"
-            class="transition-colors hover:text-error dark:hover:text-error"
-            :class="{ 'text-error dark:text-error': !user.isActive, 'text-primary-500 dark:text-primary-400': user.isActive }"
-            :title="user.isActive ? 'Sospendi utente' : 'Riattiva utente'"
-            @click="isSuspendModalOpen = true"
-          />
-          <UButton
-            icon="i-heroicons-trash"
-            color="neutral"
-            variant="ghost"
-            class="transition-colors hover:text-error dark:hover:text-error text-primary-500 dark:text-primary-400"
-            title="Elimina utente"
-            @click="isDeleteModalOpen = true"
-          />
+        <div class="flex items-center justify-end gap-2 w-full">
+          <!-- Impersona utente -->
+          <UTooltip text="Accedi al sito come questo utente">
+            <UButton
+              icon="i-heroicons-arrow-right-on-rectangle"
+              label="Impersona"
+              color="primary"
+              variant="soft"
+              size="sm"
+              :loading="isImpersonating"
+              :disabled="isDeletingUser || isTogglingStatus"
+              class="transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2"
+              @click="onImpersonate"
+            />
+          </UTooltip>
+
+          <!-- Sospendi / Riattiva -->
+          <UTooltip :text="user.isActive ? 'Sospendi utente' : 'Riattiva utente'">
+            <UButton
+              :icon="user.isActive ? 'i-heroicons-pause-circle' : 'i-heroicons-play-circle'"
+              :label="user.isActive ? 'Sospendi' : 'Riattiva'"
+              :color="user.isActive ? 'warning' : 'success'"
+              variant="soft"
+              size="sm"
+              :loading="isTogglingStatus"
+              :disabled="isDeletingUser || isImpersonating"
+              class="transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2"
+              @click="isSuspendModalOpen = true"
+            />
+          </UTooltip>
+
+          <!-- Elimina utente -->
+          <UTooltip text="Elimina utente definitivamente">
+            <UButton
+              icon="i-heroicons-trash"
+              label="Elimina"
+              color="error"
+              variant="soft"
+              size="sm"
+              :loading="isDeletingUser"
+              :disabled="isTogglingStatus || isImpersonating"
+              class="transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2"
+              @click="isDeleteModalOpen = true"
+            />
+          </UTooltip>
         </div>
 
         <!-- ── Sezione Anagrafica ── -->
@@ -391,11 +443,12 @@ async function onToggleSuspend() {
   >
     <template #body>
       <div class="flex justify-end gap-3">
-        <UButton color="neutral" variant="ghost" @click="isSuspendModalOpen = false">
+        <UButton color="neutral" variant="ghost" :disabled="isTogglingStatus" @click="isSuspendModalOpen = false">
           Annulla
         </UButton>
         <UButton
           :color="user?.isActive ? 'error' : 'success'"
+          :loading="isTogglingStatus"
           @click="onToggleSuspend"
         >
           {{ user?.isActive ? 'Sospendi utente' : 'Riattiva utente' }}
@@ -414,10 +467,10 @@ async function onToggleSuspend() {
   >
     <template #body>
       <div class="flex justify-end gap-3">
-        <UButton color="neutral" variant="ghost" @click="isDeleteModalOpen = false">
+        <UButton color="neutral" variant="ghost" :disabled="isDeletingUser" @click="isDeleteModalOpen = false">
           Annulla
         </UButton>
-        <UButton color="error" @click="onDeleteUser">
+        <UButton color="error" :loading="isDeletingUser" @click="onDeleteUser">
           Elimina utente
         </UButton>
       </div>
