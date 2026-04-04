@@ -373,7 +373,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersAddPremiumModal>
-          <EcUsersDisableProfileModal :users="selectedUsers">
+          <EcUsersDisableProfileModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Disattiva profilo"
