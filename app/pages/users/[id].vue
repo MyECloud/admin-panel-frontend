@@ -30,9 +30,9 @@ const isImpersonating = ref(false)
 async function onImpersonate() {
   isImpersonating.value = true
   try {
-    const res = await $api<{ accessToken: string }>(`/admin/users/${userId}/authToken`, { method: 'POST' })
+    const res = await $api<{ accessToken: string; tokenType: string; maxAge: number; refreshToken: string }>(`/admin/users/${userId}/authToken`, { method: 'POST' })
     const url = new URL('https://test.escort-cloud.com')
-    url.searchParams.set('auth.token', res.accessToken)
+    url.searchParams.set('token', res.accessToken)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
   catch {
