@@ -21,6 +21,14 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
+},
+{
+  label: 'Segnalazioni',
+  icon: 'i-lucide-flag',
+  to: '/segnalazioni',
+  onSelect: () => {
+    open.value = false
+  }
 }]] satisfies NavigationMenuItem[][]
 </script>
 
