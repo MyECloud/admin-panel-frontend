@@ -57,7 +57,15 @@ function getRowItems(row: Row<ApiUser>) {
     },
     {
       label: 'Vai al profilo pubblico',
-      icon: 'i-lucide-user-check'
+      icon: 'i-lucide-user-check',
+      onSelect() {
+        const user = row.original
+
+        // crea slug (es: "Girl Sample 7" → "girl%20sample%207")
+        const slug = encodeURIComponent(user.name.toLowerCase())
+        const url = `https://test.escort-cloud.com/escort/${user.id}/${slug}`
+        window.open(url, '_blank')
+      }
     },
     {
       type: 'separator'
