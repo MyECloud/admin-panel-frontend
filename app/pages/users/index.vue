@@ -388,7 +388,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersDisableProfileModal>
-          <EcUsersDeleteModal :users="selectedUsers">
+          <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"
