@@ -7,6 +7,7 @@
     "dev:local": "nuxt dev --dotenv .env.local",
     "dev:test": "nuxt dev --dotenv .env.test",
     "dev:prod": "nuxt dev --dotenv .env.prod",
+    "deploy": "docker build --no-cache -t ecgentle/ecloud-frontend:admin-panel . && docker push ecgentle/ecloud-frontend:admin-panel",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
