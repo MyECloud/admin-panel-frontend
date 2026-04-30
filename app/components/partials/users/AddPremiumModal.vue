@@ -6,11 +6,11 @@ const props = withDefaults(defineProps<{
   open?: boolean
 }>(), {
   users: () => [],
-  open: false,
+  open: false
 })
 
 const emit = defineEmits<{
-  success: []
+  'success': []
   'update:open': [value: boolean]
 }>()
 
@@ -42,31 +42,44 @@ function resetForm() {
 async function onSubmit() {
   loading.value = true
   try {
-    const promises = props.users.map(user =>
-      $api(`/admin/users/${user.id}/subscription`, {
-        method: 'PUT',
-        body: { additionalMonths: additionalMonths.value }
-      })
+    // const promises = props.users.map(user =>
+    //   $api(`/admin/users/${user.id}/subscription`, {
+    //     method: 'PUT',
+    //     body: { additionalMonths: additionalMonths.value }
+    //   })
+    // )
+    // await Promise.all(promises)
+    const results = await Promise.allSettled(
+      props.users.map(user =>
+        $api(`/admin/users/${user.id}/subscription`, {
+          method: 'PUT',
+          body: { additionalMonths: additionalMonths.value }
+        })
+      )
     )
-    await Promise.all(promises)
 
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    const failedCount = results.filter(r => r.status === 'rejected').length
+    // toast.add({
+    //   title: 'Premium aggiunto',
+    //   description: `${additionalMonths.value} ${additionalMonths.value === 1 ? 'mese' : 'mesi'} di premium ${props.users.length === 1 ? 'aggiunto' : 'aggiunti'} con successo.`,
+    //   color: 'success'
+    // })
     toast.add({
-      title: 'Premium aggiunto',
-      description: `${additionalMonths.value} ${additionalMonths.value === 1 ? 'mese' : 'mesi'} di premium ${props.users.length === 1 ? 'aggiunto' : 'aggiunti'} con successo.`,
-      color: 'success'
+      title: 'Operazione completata',
+      description: `${successCount} utenti aggiornati, ${failedCount} errori`,
+      color: failedCount ? 'warning' : 'success'
     })
     open.value = false
     resetForm()
     emit('success')
-  }
-  catch (error) {
+  } catch (error) {
     toast.add({
       title: 'Errore',
       description: 'Si è verificato un errore durante l\'aggiunta del premium.',
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -91,7 +104,9 @@ async function onSubmit() {
         </UFormField>
 
         <div class="text-sm text-muted">
-          <p class="mb-1 font-medium">Utenti selezionati:</p>
+          <p class="mb-1 font-medium">
+            Utenti selezionati:
+          </p>
           <ul class="list-disc pl-4">
             <li v-for="user in users" :key="user.id">
               {{ user.name }} (@{{ user.username }})

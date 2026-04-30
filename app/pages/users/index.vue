@@ -57,7 +57,15 @@ function getRowItems(row: Row<ApiUser>) {
     },
     {
       label: 'Vai al profilo pubblico',
-      icon: 'i-lucide-user-check'
+      icon: 'i-lucide-user-check',
+      onSelect() {
+        const user = row.original
+
+        // crea slug (es: "Girl Sample 7" → "girl%20sample%207")
+        const slug = encodeURIComponent(user.name.toLowerCase())
+        const url = `https://test.escort-cloud.com/escort/${user.id}/${slug}`
+        window.open(url, '_blank')
+      }
     },
     {
       type: 'separator'
@@ -65,23 +73,66 @@ function getRowItems(row: Row<ApiUser>) {
     {
       label: 'Sospendi',
       icon: 'i-lucide-user-x',
-      onSelect() {
-        navigator.clipboard.writeText(row.original.id.toString())
-        toast.add({
-          title: 'Copied to clipboard',
-          description: 'Customer ID copied to clipboard'
-        })
+      async onSelect() {
+        try {
+          const user = row.original
+
+          const newStatus = !user.isActive
+
+          await $api(`/admin/users/${user.id}/status`, {
+            method: 'PUT', // o PUT/POST in base alla tua API
+            body: {
+              active: newStatus
+            }
+          })
+
+          toast.add({
+            title: newStatus ? 'Utente attivato' : 'Utente sospeso',
+            description: `Lo stato dell'utente è stato aggiornato.`
+          })
+
+          await refresh() // 🔥 aggiorna la tabella
+        } catch (err) {
+          console.error('[Users] Error updating status:', err)
+
+          toast.add({
+            title: 'Errore',
+            description: 'Impossibile aggiornare lo stato utente',
+            color: 'error'
+          })
+        }
       }
     },
     {
       label: 'Elimina utente',
       icon: 'i-lucide-trash',
       color: 'error',
-      onSelect() {
-        toast.add({
-          title: 'Elimina utente',
-          description: 'L\'utente è stato eliminato.'
-        })
+      async onSelect() {
+        const user = row.original
+
+        // ⚠️ conferma (fortemente consigliata)
+        if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
+
+        try {
+          await $api(`/admin/users/${user.id}`, {
+            method: 'DELETE'
+          })
+
+          toast.add({
+            title: 'Utente eliminato',
+            description: `${user.name} è stato eliminato correttamente.`
+          })
+
+          await refresh() // 🔥 aggiorna tabella
+        } catch (err) {
+          console.error('[Users] Error deleting user:', err)
+
+          toast.add({
+            title: 'Errore',
+            description: 'Impossibile eliminare l’utente',
+            color: 'error'
+          })
+        }
       }
     }
   ]
@@ -330,7 +381,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersAddPremiumModal>
-          <EcUsersDisableProfileModal :users="selectedUsers">
+          <EcUsersDisableProfileModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Disattiva profilo"
@@ -345,7 +396,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersDisableProfileModal>
-          <EcUsersDeleteModal :users="selectedUsers">
+          <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"
@@ -415,7 +466,9 @@ const pagination = computed({
 
       <div v-if="status === 'pending'" class="flex flex-col items-center justify-center py-12 gap-3">
         <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
-        <p class="text-sm text-muted">Caricamento utenti...</p>
+        <p class="text-sm text-muted">
+          Caricamento utenti...
+        </p>
       </div>
 
       <UTable
