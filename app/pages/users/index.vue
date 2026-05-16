@@ -261,6 +261,42 @@ const columns: TableColumn<ApiUser>[] = [
     }
   },
   {
+    accessorKey: 'documentsStatus',
+    header: 'Documenti',
+    cell: ({ row }) => {
+      const status = row.original.documentsStatus
+
+      const map = {
+        missing: {
+          label: 'Non inviati',
+          color: 'error'
+        },
+        pending: {
+          label: 'In verifica',
+          color: 'warning'
+        },
+        verified: {
+          label: 'Verificati',
+          color: 'success'
+        }
+      }
+
+      const config = map[status] || {
+        label: 'Sconosciuto',
+        color: 'neutral'
+      }
+
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: config.color
+        },
+        () => config.label
+      )
+    }
+  },
+  {
     id: 'actions',
     cell: ({ row }) => {
       return h(
@@ -289,6 +325,8 @@ const columns: TableColumn<ApiUser>[] = [
 
 const statusFilter = ref('all')
 const typeFilter = ref('all')
+const newContentsFilter = ref('all')
+const documentsFilter = ref('all')
 
 watch(statusFilter, (newVal) => {
   columnFilters.value = columnFilters.value.filter(
@@ -315,6 +353,39 @@ watch(typeFilter, (newVal) => {
 
   if (newVal !== 'all') {
     columnFilters.value.push({ id: 'type', value: newVal })
+  }
+})
+
+watch(newContentsFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'newContents'
+  )
+
+  if (newVal === 'with-new-contents') {
+    columnFilters.value.push({
+      id: 'newContents',
+      value: true
+    })
+  }
+
+  if (newVal === 'without-new-contents') {
+    columnFilters.value.push({
+      id: 'newContents',
+      value: false
+    })
+  }
+})
+
+watch(documentsFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'documentsStatus'
+  )
+
+  if (newVal !== 'all') {
+    columnFilters.value.push({
+      id: 'documentsStatus',
+      value: newVal
+    })
   }
 })
 
@@ -434,6 +505,30 @@ const pagination = computed({
             :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
             placeholder="Filter status"
             class="min-w-28"
+          />
+          <USelect
+            v-model="newContentsFilter"
+            :items="[
+              { label: 'Tutti i contenuti', value: 'all' },
+              { label: 'Con nuovi contenuti', value: 'with-new-contents' },
+              { label: 'Senza nuovi contenuti', value: 'without-new-contents' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Nuovi contenuti"
+            class="min-w-48"
+          />
+
+          <USelect
+            v-model="documentsFilter"
+            :items="[
+              { label: 'Tutti i documenti', value: 'all' },
+              { label: 'Non inviati', value: 'missing' },
+              { label: 'In verifica', value: 'pending' },
+              { label: 'Verificati', value: 'verified' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Documenti"
+            class="min-w-40"
           />
           <UDropdownMenu
             :items="
