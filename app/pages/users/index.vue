@@ -107,33 +107,7 @@ function getRowItems(row: Row<ApiUser>) {
       label: 'Elimina utente',
       icon: 'i-lucide-trash',
       color: 'error',
-      async onSelect() {
-        const user = row.original
-
-        // ⚠️ conferma (fortemente consigliata)
-        if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
-
-        try {
-          await $api(`/admin/users/${user.id}`, {
-            method: 'DELETE'
-          })
-
-          toast.add({
-            title: 'Utente eliminato',
-            description: `${user.name} è stato eliminato correttamente.`
-          })
-
-          await refresh() // 🔥 aggiorna tabella
-        } catch (err) {
-          console.error('[Users] Error deleting user:', err)
-
-          toast.add({
-            title: 'Errore',
-            description: 'Impossibile eliminare l’utente',
-            color: 'error'
-          })
-        }
-      }
+      disabled: true
     }
   ]
 }
@@ -403,6 +377,7 @@ const pagination = computed({
               color="error"
               variant="subtle"
               icon="i-lucide-trash"
+              disabled
             >
               <template #trailing>
                 <UKbd>
