@@ -209,7 +209,7 @@ async function onToggleSuspend() {
               variant="soft"
               size="sm"
               :loading="isDeletingUser"
-              :disabled="isTogglingStatus || isImpersonating"
+              :disabled="true"
               class="transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2"
               @click="isDeleteModalOpen = true"
             />

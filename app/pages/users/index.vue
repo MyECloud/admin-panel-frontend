@@ -77,6 +77,7 @@ function getRowItems(row: Row<ApiUser>) {
       label: 'Elimina utente',
       icon: 'i-lucide-trash',
       color: 'error',
+      disabled: true,
       onSelect() {
         toast.add({
           title: 'Elimina utente',
@@ -352,6 +353,7 @@ const pagination = computed({
               color="error"
               variant="subtle"
               icon="i-lucide-trash"
+              disabled
             >
               <template #trailing>
                 <UKbd>
