@@ -30,15 +30,13 @@ const isImpersonating = ref(false)
 async function onImpersonate() {
   isImpersonating.value = true
   try {
-    const res = await $api<{ accessToken: string; tokenType: string; maxAge: number; refreshToken: string }>(`/admin/users/${userId}/authToken`, { method: 'POST' })
+    const res = await $api<{ accessToken: string, tokenType: string, maxAge: number, refreshToken: string }>(`/admin/users/${userId}/authToken`, { method: 'POST' })
     const url = new URL('https://test.escort-cloud.com')
-    url.searchParams.set('token', res.accessToken)
+    url.searchParams.set('authToken', res.accessToken)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Errore durante la generazione del token', color: 'error' })
-  }
-  finally {
+  } finally {
     isImpersonating.value = false
   }
 }
@@ -55,11 +53,9 @@ async function onConfirmDocuments() {
     toast.add({ title: 'Documenti confermati', color: 'success' })
     rejectedDocumentIds.value = new Set()
     await refresh()
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Errore durante la conferma dei documenti', color: 'error' })
-  }
-  finally {
+  } finally {
     isConfirmingDocs.value = false
   }
 }
@@ -71,12 +67,10 @@ async function onRejectDocuments() {
     await $api(`/admin/escorts/${userId}/reject`, { method: 'PATCH' })
     toast.add({ title: 'Documenti rifiutati', color: 'success' })
     await refresh()
-  }
-  catch {
+  } catch {
     rejectedDocumentIds.value = new Set()
     toast.add({ title: 'Errore durante il rifiuto dei documenti', color: 'error' })
-  }
-  finally {
+  } finally {
     isRejectingDocs.value = false
   }
 }
@@ -86,7 +80,7 @@ function formatDate(dateStr: string | null | undefined): string {
   return new Date(dateStr).toLocaleDateString('it-IT', {
     day: '2-digit',
     month: '2-digit',
-    year: '2-digit',
+    year: '2-digit'
   })
 }
 
@@ -106,11 +100,9 @@ async function onDeleteUser() {
     await $api(`/admin/users/${userId}`, { method: 'DELETE' })
     toast.add({ title: 'Utente eliminato', color: 'success' })
     navigateTo('/users')
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Errore durante l\'eliminazione', color: 'error' })
-  }
-  finally {
+  } finally {
     isDeletingUser.value = false
     isDeleteModalOpen.value = false
   }
@@ -121,18 +113,16 @@ async function onToggleSuspend() {
   try {
     await $api(`/admin/users/${userId}/status`, {
       method: 'PUT',
-      body: { active: !user.value?.isActive },
+      body: { active: !user.value?.isActive }
     })
     toast.add({
       title: user.value?.isActive ? 'Utente sospeso' : 'Utente riattivato',
-      color: 'success',
+      color: 'success'
     })
     await refresh()
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Errore durante l\'operazione', color: 'error' })
-  }
-  finally {
+  } finally {
     isTogglingStatus.value = false
     isSuspendModalOpen.value = false
   }
@@ -162,12 +152,16 @@ async function onToggleSuspend() {
         <p class="text-gray-500 dark:text-gray-400">
           Impossibile caricare i dati dell'utente.
         </p>
-        <UButton label="Riprova" color="primary" variant="solid" @click="refresh()" />
+        <UButton
+          label="Riprova"
+          color="primary"
+          variant="solid"
+          @click="refresh()"
+        />
       </div>
 
       <!-- Content -->
       <div v-else-if="user" class="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-8">
-
         <!-- Action buttons -->
         <div class="flex items-center justify-end gap-2 w-full">
           <!-- Impersona utente -->
@@ -367,10 +361,10 @@ async function onToggleSuspend() {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center border-b border-gray-100 dark:border-gray-800 pb-6 mb-6">
             <div
               v-for="(flag, label) in {
-                'Inviati': user.documents.sent,
-                'Ricevuti': user.documents.received,
-                'Archiviati': user.documents.archived,
-                'Verificati': user.documents.verified,
+                Inviati: user.documents.sent,
+                Ricevuti: user.documents.received,
+                Archiviati: user.documents.archived,
+                Verificati: user.documents.verified
               }"
               :key="label"
               class="flex flex-col gap-2"
@@ -399,7 +393,7 @@ async function onToggleSuspend() {
                     :alt="doc.name"
                     width="252"
                     height="160"
-                    :class="['rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-all', { 'grayscale': rejectedDocumentIds.has(doc.id) }]"
+                    :class="['rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:opacity-90 transition-all', { grayscale: rejectedDocumentIds.has(doc.id) }]"
                     style="width:252px; height:160px"
                   />
                 </a>
@@ -426,7 +420,6 @@ async function onToggleSuspend() {
             Nessun documento caricato.
           </p>
         </UCard>
-
       </div>
     </template>
   </UDashboardPanel>
@@ -443,7 +436,12 @@ async function onToggleSuspend() {
   >
     <template #body>
       <div class="flex justify-end gap-3">
-        <UButton color="neutral" variant="ghost" :disabled="isTogglingStatus" @click="isSuspendModalOpen = false">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :disabled="isTogglingStatus"
+          @click="isSuspendModalOpen = false"
+        >
           Annulla
         </UButton>
         <UButton
@@ -467,7 +465,12 @@ async function onToggleSuspend() {
   >
     <template #body>
       <div class="flex justify-end gap-3">
-        <UButton color="neutral" variant="ghost" :disabled="isDeletingUser" @click="isDeleteModalOpen = false">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :disabled="isDeletingUser"
+          @click="isDeleteModalOpen = false"
+        >
           Annulla
         </UButton>
         <UButton color="error" :loading="isDeletingUser" @click="onDeleteUser">

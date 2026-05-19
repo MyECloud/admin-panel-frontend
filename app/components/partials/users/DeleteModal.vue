@@ -1,15 +1,47 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-  users?: Array
+const props = withDefaults(defineProps<{
+  users?: any[]
 }>(), {
   users: []
 })
 
+const emit = defineEmits<{
+  success: []
+}>()
+
+const { $api } = useNuxtApp()
+const toast = useToast()
+
 const open = ref(false)
 
 async function onSubmit() {
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  open.value = false
+  try {
+    const results = await Promise.allSettled(
+      props.users.map(user =>
+        $api(`/admin/users/${user.id}`, {
+          method: 'DELETE'
+        })
+      )
+    )
+
+    const successCount = results.filter(r => r.status === 'fulfilled').length
+    const failedCount = results.filter(r => r.status === 'rejected').length
+
+    toast.add({
+      title: 'Operazione completata',
+      description: `${successCount} utenti eliminati, ${failedCount} errori`,
+      color: failedCount ? 'warning' : 'success'
+    })
+
+    open.value = false
+    emit('success')
+  } catch (error) {
+    toast.add({
+      title: 'Errore',
+      description: 'Errore durante l’eliminazione utenti',
+      color: 'error'
+    })
+  }
 }
 </script>
 
