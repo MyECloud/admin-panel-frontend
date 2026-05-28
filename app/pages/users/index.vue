@@ -102,40 +102,73 @@ function getRowItems(row: Row<ApiUser>) {
           })
         }
       }
-    },
-    {
-      label: 'Elimina utente',
-      icon: 'i-lucide-trash',
-      color: 'error',
-      async onSelect() {
-        const user = row.original
-
-        // ⚠️ conferma (fortemente consigliata)
-        if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
-
-        try {
-          await $api(`/admin/users/${user.id}`, {
-            method: 'DELETE'
-          })
-
-          toast.add({
-            title: 'Utente eliminato',
-            description: `${user.name} è stato eliminato correttamente.`
-          })
-
-          await refresh() // 🔥 aggiorna tabella
-        } catch (err) {
-          console.error('[Users] Error deleting user:', err)
-
-          toast.add({
-            title: 'Errore',
-            description: 'Impossibile eliminare l’utente',
-            color: 'error'
-          })
-        }
-      }
     }
+    // {
+    //   label: 'Elimina utente',
+    //   icon: 'i-lucide-trash',
+    //   color: 'error',
+    //   async onSelect() {
+    //     const user = row.original
+
+    //     // ⚠️ conferma (fortemente consigliata)
+    //     if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
+
+    //     try {
+    //       await $api(`/admin/users/${user.id}`, {
+    //         method: 'DELETE'
+    //       })
+
+    //       toast.add({
+    //         title: 'Utente eliminato',
+    //         description: `${user.name} è stato eliminato correttamente.`
+    //       })
+
+    //       await refresh() // 🔥 aggiorna tabella
+    //     } catch (err) {
+    //       console.error('[Users] Error deleting user:', err)
+
+    //       toast.add({
+    //         title: 'Errore',
+    //         description: 'Impossibile eliminare l’utente',
+    //         color: 'error'
+    //       })
+    //     }
+    //   }
+    // }
   ]
+}
+
+function getDocumentsStatus(documents?: { sent: boolean, verified: boolean }) {
+  console.log(documents?.sent)
+  if (!documents?.sent) {
+    return {
+      value: 'missing',
+      label: 'Non inviati',
+      color: 'error'
+    }
+  }
+
+  if (documents.sent && !documents.verified) {
+    return {
+      value: 'pending',
+      label: 'In verifica',
+      color: 'warning'
+    }
+  }
+
+  if (documents.sent && documents.verified) {
+    return {
+      value: 'verified',
+      label: 'Verificati',
+      color: 'success'
+    }
+  }
+
+  return {
+    value: 'unknown',
+    label: 'Sconosciuto',
+    color: 'neutral'
+  }
 }
 
 const columns: TableColumn<ApiUser>[] = [
@@ -178,7 +211,13 @@ const columns: TableColumn<ApiUser>[] = [
         h('div', undefined, [
           h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
           h('p', { class: 'text-sm text-muted' }, `@${row.original.username}`)
-        ])
+        ]),
+        h(UBadge,
+          {
+            variant: 'subtle',
+            color: row.original.isDeleted ? 'error' : 'success'
+          },
+          () => (row.original.isDeleted ? 'Cancellato' : 'Attivo'))
       ])
     }
   },
@@ -261,30 +300,12 @@ const columns: TableColumn<ApiUser>[] = [
     }
   },
   {
-    accessorKey: 'documentsStatus',
+    accessorKey: 'documents',
+    accessorFn: row => getDocumentsStatus(row.documents).value,
     header: 'Documenti',
+    filterFn: 'equals',
     cell: ({ row }) => {
-      const status = row.original.documentsStatus
-
-      const map = {
-        missing: {
-          label: 'Non inviati',
-          color: 'error'
-        },
-        pending: {
-          label: 'In verifica',
-          color: 'warning'
-        },
-        verified: {
-          label: 'Verificati',
-          color: 'success'
-        }
-      }
-
-      const config = map[status] || {
-        label: 'Sconosciuto',
-        color: 'neutral'
-      }
+      const config = getDocumentsStatus(row.original.documents)
 
       return h(
         UBadge,
@@ -378,12 +399,12 @@ watch(newContentsFilter, (newVal) => {
 
 watch(documentsFilter, (newVal) => {
   columnFilters.value = columnFilters.value.filter(
-    f => f.id !== 'documentsStatus'
+    f => f.id !== 'documents'
   )
 
   if (newVal !== 'all') {
     columnFilters.value.push({
-      id: 'documentsStatus',
+      id: 'documents',
       value: newVal
     })
   }
@@ -467,7 +488,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersDisableProfileModal>
-          <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
+          <!-- <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"
@@ -481,7 +502,7 @@ const pagination = computed({
                 </UKbd>
               </template>
             </UButton>
-          </EcUsersDeleteModal>
+          </EcUsersDeleteModal> -->
 
           <USelect
             v-model="typeFilter"
