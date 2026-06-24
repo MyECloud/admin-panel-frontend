@@ -1,0 +1,344 @@
+<script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
+import { upperFirst } from 'scule'
+import type { Row } from '@tanstack/table-core'
+import type { Review, PaginatedResponse, ApiReview } from '~/types/review'
+
+const UAvatar = resolveComponent('UAvatar')
+const UButton = resolveComponent('UButton')
+const UBadge = resolveComponent('UBadge')
+const UDropdownMenu = resolveComponent('UDropdownMenu')
+const UCheckbox = resolveComponent('UCheckbox')
+
+const toast = useToast()
+const table = useTemplateRef('table')
+const { $api } = useNuxtApp()
+
+const page = ref(1)
+const pageSize = ref(10)
+
+const columnFilters = ref([{
+  id: 'email',
+  value: ''
+}])
+const columnVisibility = ref()
+const rowSelection = ref({})
+
+const { data: response, status, refresh } = await useAsyncData(
+  'users-list',
+  () => {
+    console.log('[Users] Fetching users reviews — page:', page.value, 'limit:', pageSize.value)
+    return $api<PaginatedResponse<ApiReview>>('/admin/reviews/reports', {
+      query: { page: page.value, limit: pageSize.value }
+    }).catch((err) => {
+      console.error('[Users] API error:', err)
+      return null
+    })
+  },
+  {
+    server: false,
+    watch: [page, pageSize]
+  }
+)
+
+watchEffect(() => {
+  console.log('[Users] Response:', response.value)
+  console.log('[Users] Status:', status.value)
+})
+
+const data = computed(() => response.value?.items ?? [])
+const totalItems = computed(() => response.value?.meta?.totalItems ?? 0)
+
+function getRowItems(row: Row<UserReport>) {
+  return [
+    {
+      type: 'label',
+      label: 'Azioni'
+    },
+    {
+      label: 'Vai al profilo pubblico',
+      icon: 'i-lucide-user-check',
+      onSelect() {
+        const user = row.original
+
+        // crea slug (es: "Girl Sample 7" → "girl%20sample%207")
+        const slug = encodeURIComponent(user.name.toLowerCase())
+        const url = `https://test.escort-cloud.com/escort/${user.id}/${slug}`
+        window.open(url, '_blank')
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Sospendi',
+      icon: 'i-lucide-user-x',
+      async onSelect() {
+        try {
+          const user = row.original
+
+          const newStatus = !user.isActive
+
+          await $api(`/admin/users/${user.id}/status`, {
+            method: 'PUT', // o PUT/POST in base alla tua API
+            body: {
+              active: newStatus
+            }
+          })
+
+          toast.add({
+            title: newStatus ? 'Utente attivato' : 'Utente sospeso',
+            description: `Lo stato dell'utente è stato aggiornato.`
+          })
+
+          await refresh() // 🔥 aggiorna la tabella
+        } catch (err) {
+          console.error('[Users] Error updating status:', err)
+
+          toast.add({
+            title: 'Errore',
+            description: 'Impossibile aggiornare lo stato utente',
+            color: 'error'
+          })
+        }
+      }
+    },
+    {
+      label: 'Elimina utente',
+      icon: 'i-lucide-trash',
+      color: 'error',
+      async onSelect() {
+        const user = row.original
+
+        // ⚠️ conferma (fortemente consigliata)
+        if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
+
+        try {
+          await $api(`/admin/users/${user.id}`, {
+            method: 'DELETE'
+          })
+
+          toast.add({
+            title: 'Utente eliminato',
+            description: `${user.name} è stato eliminato correttamente.`
+          })
+
+          await refresh() // 🔥 aggiorna tabella
+        } catch (err) {
+          console.error('[Users] Error deleting user:', err)
+
+          toast.add({
+            title: 'Errore',
+            description: 'Impossibile eliminare l’utente',
+            color: 'error'
+          })
+        }
+      }
+    }
+  ]
+}
+
+const columns: TableColumn<Review>[] = [
+  {
+    id: 'select',
+    header: ({ table }) =>
+      h(UCheckbox, {
+        'modelValue': table.getIsSomePageRowsSelected()
+          ? 'indeterminate'
+          : table.getIsAllPageRowsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!value),
+        'ariaLabel': 'Select all'
+      }),
+    cell: ({ row }) =>
+      h(UCheckbox, {
+        'modelValue': row.getIsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
+        'ariaLabel': 'Select row'
+      })
+  },
+  {
+    accessorKey: 'reporter.username',
+    header: 'Username'
+  },
+  {
+    accessorKey: 'reporter.name',
+    header: 'Utente',
+    cell: ({ row }) => {
+      const NuxtLink = resolveComponent('NuxtLink')
+      return h(NuxtLink, {
+        to: `/users/${row.original.id}`,
+        class: 'flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-white/5 p-1 -m-1 rounded-lg transition-colors group cursor-pointer'
+      }, () => [
+        h(UAvatar, {
+          src: row.original.avatarUrl || undefined,
+          alt: row.original.name,
+          size: 'lg'
+        }),
+        h('div', undefined, [
+          h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
+          h('p', { class: 'text-sm text-muted' }, `@${row.original.username}`)
+        ])
+      ])
+    }
+  },
+  {
+    accessorKey: 'reported.username',
+    header: 'Utente Segnalato'
+
+  },
+  {
+    accessorKey: 'reason',
+    header: 'Motivo'
+  },
+  {
+    id: 'date',
+    header: 'Data',
+    cell: ({ row }) => {
+      const expiration = row.original.date
+      const formattedDate = expiration
+        ? new Date(expiration).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : null
+      return h('div', { class: 'flex flex-col' }, [
+        ...(formattedDate
+          ? [h('span', { class: 'text-xs text-muted mt-0.5' }, `${formattedDate}`)]
+          : []
+        )
+      ])
+    }
+  },
+  {
+    accessorKey: 'freeTextReason',
+    header: 'Testo libero'
+  }
+]
+
+const typeFilter = ref('all')
+const newContentsFilter = ref('all')
+const documentsFilter = ref('all')
+
+const selectedUsers = computed<User>((): User => {
+  if (!table?.value?.tableApi) return []
+  return table.value.tableApi
+    .getFilteredSelectedRowModel()
+    .rows.map((row: Row<User>) => row.original)
+})
+
+const usernameFilter = computed({
+  get: (): string => {
+    return (table.value?.tableApi?.getColumn('name')?.getFilterValue() as string) || ''
+  },
+  set: (value: string) => {
+    table.value?.tableApi?.getColumn('name')?.setFilterValue(value || undefined)
+  }
+})
+
+const pagination = computed({
+  get: () => ({
+    pageIndex: page.value - 1,
+    pageSize: pageSize.value
+  }),
+  set: (val) => {
+    page.value = val.pageIndex + 1
+    pageSize.value = val.pageSize
+  }
+})
+</script>
+
+<template>
+  <UDashboardPanel id="customers">
+    <template #header>
+      <UDashboardNavbar title="Utenti">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+      </UDashboardNavbar>
+    </template>
+
+    <template #body>
+      <div class="flex flex-wrap items-center justify-between gap-1.5">
+        <UInput
+          v-model="usernameFilter"
+          class="max-w-sm"
+          icon="i-lucide-search"
+          placeholder="Cerca utenti..."
+        />
+
+        <UDropdownMenu
+          :items="
+            table?.tableApi
+              ?.getAllColumns()
+              .filter((column: any) => column.getCanHide())
+              .map((column: any) => ({
+                label: upperFirst(column.id),
+                type: 'checkbox' as const,
+                checked: column.getIsVisible(),
+                onUpdateChecked(checked: boolean) {
+                  table?.tableApi?.getColumn(column.id)?.toggleVisibility(!!checked)
+                },
+                onSelect(e?: Event) {
+                  e?.preventDefault()
+                }
+              }))
+          "
+          :content="{ align: 'end' }"
+        >
+          <UButton
+            label="Colonne"
+            color="neutral"
+            variant="outline"
+            trailing-icon="i-lucide-settings-2"
+          />
+        </UDropdownMenu>
+      </div>
+
+      <div v-if="status === 'pending'" class="flex flex-col items-center justify-center py-12 gap-3">
+        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
+        <p class="text-sm text-muted">
+          Caricamento utenti...
+        </p>
+      </div>
+
+      <UTable
+        v-else
+        ref="table"
+        v-model:column-filters="columnFilters"
+        v-model:column-visibility="columnVisibility"
+        v-model:row-selection="rowSelection"
+        v-model:pagination="pagination"
+        :row-count="totalItems"
+        :pagination-options="{
+          manualPagination: true
+        }"
+        class="shrink-0"
+        :data="data"
+        :columns="columns"
+        :loading="status === 'pending'"
+        :ui="{
+          base: 'table-fixed border-separate border-spacing-0',
+          thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
+          tbody: '[&>tr]:last:[&>td]:border-b-0',
+          th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+          td: 'border-b border-default',
+          separator: 'h-0'
+        }"
+      />
+
+      <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
+        <div class="text-sm text-muted">
+          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} di
+          {{ totalItems }} utenti totali.
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <UPagination
+            :default-page="page"
+            :items-per-page="pageSize"
+            :total="totalItems"
+            @update:page="(p: number) => { page = p }"
+          />
+        </div>
+      </div>
+    </template>
+  </UDashboardPanel>
+</template>

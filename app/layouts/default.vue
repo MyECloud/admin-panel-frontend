@@ -24,12 +24,27 @@ const links = [[{
 },
 {
   label: 'Segnalazioni',
-  icon: 'i-lucide-flag',
-  to: '/segnalazioni',
-  onSelect: () => {
-    open.value = false
-  }
-}]] satisfies NavigationMenuItem[][]
+  icon: 'i-lucide-shield-alert',
+  children: [
+    {
+      label: 'Utenti',
+      icon: 'i-lucide-user',
+      to: '/reports/users',
+      onSelect: () => {
+        open.value = false
+      }
+    },
+    {
+      label: 'Recensioni',
+      icon: 'i-lucide-message-square-warning',
+      to: '/reports/reviews',
+      onSelect: () => {
+        open.value = false
+      }
+    }
+  ]
+}
+]] satisfies NavigationMenuItem[][]
 </script>
 
 <template>

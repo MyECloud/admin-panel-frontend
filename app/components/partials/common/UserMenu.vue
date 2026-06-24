@@ -51,7 +51,15 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       e.preventDefault()
     }
   }]
-}], [{
+}],
+[{
+  label: 'Vai a Tawk.to',
+  icon: 'i-lucide-message-circle-more',
+  onSelect() {
+    window.open('https://dashboard.tawk.to/', '_blank', 'noopener,noreferrer')
+  } }
+],
+[{
   label: 'Log out',
   icon: 'i-lucide-log-out',
   onSelect: () => authStore.logout()

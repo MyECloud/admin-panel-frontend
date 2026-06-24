@@ -58,6 +58,8 @@ export interface ApiUser {
   type: ApiUserType
   supporter: boolean | null
   newContents: boolean
+  isDeleted: boolean
+  documents: object
 }
 
 export interface User {
@@ -100,4 +102,26 @@ export interface PaginatedResponse<T> {
   meta: PaginatedMeta
   links: PaginatedLinks
   totalResults: number
+}
+
+export interface UserReport {
+  id: number
+
+  reporter: {
+    id: number
+    username: string
+    name: string
+    avatarUrl?: string
+  }
+
+  reported: {
+    id: number
+    username: string
+    name: string
+    avatarUrl?: string
+  }
+
+  reason: string
+  freeTextReason?: string
+  date: string
 }

@@ -102,14 +102,73 @@ function getRowItems(row: Row<ApiUser>) {
           })
         }
       }
-    },
-    {
-      label: 'Elimina utente',
-      icon: 'i-lucide-trash',
-      color: 'error',
-      disabled: true
     }
+    // {
+    //   label: 'Elimina utente',
+    //   icon: 'i-lucide-trash',
+    //   color: 'error',
+    //   async onSelect() {
+    //     const user = row.original
+
+    //     // ⚠️ conferma (fortemente consigliata)
+    //     if (!confirm(`Sei sicuro di voler eliminare ${user.name}?`)) return
+
+    //     try {
+    //       await $api(`/admin/users/${user.id}`, {
+    //         method: 'DELETE'
+    //       })
+
+    //       toast.add({
+    //         title: 'Utente eliminato',
+    //         description: `${user.name} è stato eliminato correttamente.`
+    //       })
+
+    //       await refresh() // 🔥 aggiorna tabella
+    //     } catch (err) {
+    //       console.error('[Users] Error deleting user:', err)
+
+    //       toast.add({
+    //         title: 'Errore',
+    //         description: 'Impossibile eliminare l’utente',
+    //         color: 'error'
+    //       })
+    //     }
+    //   }
+    // }
   ]
+}
+
+function getDocumentsStatus(documents?: { sent: boolean, verified: boolean }) {
+  console.log(documents?.sent)
+  if (!documents?.sent) {
+    return {
+      value: 'missing',
+      label: 'Non inviati',
+      color: 'error'
+    }
+  }
+
+  if (documents.sent && !documents.verified) {
+    return {
+      value: 'pending',
+      label: 'In verifica',
+      color: 'warning'
+    }
+  }
+
+  if (documents.sent && documents.verified) {
+    return {
+      value: 'verified',
+      label: 'Verificati',
+      color: 'success'
+    }
+  }
+
+  return {
+    value: 'unknown',
+    label: 'Sconosciuto',
+    color: 'neutral'
+  }
 }
 
 const columns: TableColumn<ApiUser>[] = [
@@ -152,7 +211,13 @@ const columns: TableColumn<ApiUser>[] = [
         h('div', undefined, [
           h('p', { class: 'font-medium text-highlighted group-hover:underline' }, row.original.name),
           h('p', { class: 'text-sm text-muted' }, `@${row.original.username}`)
-        ])
+        ]),
+        h(UBadge,
+          {
+            variant: 'subtle',
+            color: row.original.isDeleted ? 'error' : 'success'
+          },
+          () => (row.original.isDeleted ? 'Cancellato' : 'Attivo'))
       ])
     }
   },
@@ -235,6 +300,24 @@ const columns: TableColumn<ApiUser>[] = [
     }
   },
   {
+    accessorKey: 'documents',
+    accessorFn: row => getDocumentsStatus(row.documents).value,
+    header: 'Documenti',
+    filterFn: 'equals',
+    cell: ({ row }) => {
+      const config = getDocumentsStatus(row.original.documents)
+
+      return h(
+        UBadge,
+        {
+          variant: 'subtle',
+          color: config.color
+        },
+        () => config.label
+      )
+    }
+  },
+  {
     id: 'actions',
     cell: ({ row }) => {
       return h(
@@ -263,6 +346,8 @@ const columns: TableColumn<ApiUser>[] = [
 
 const statusFilter = ref('all')
 const typeFilter = ref('all')
+const newContentsFilter = ref('all')
+const documentsFilter = ref('all')
 
 watch(statusFilter, (newVal) => {
   columnFilters.value = columnFilters.value.filter(
@@ -289,6 +374,39 @@ watch(typeFilter, (newVal) => {
 
   if (newVal !== 'all') {
     columnFilters.value.push({ id: 'type', value: newVal })
+  }
+})
+
+watch(newContentsFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'newContents'
+  )
+
+  if (newVal === 'with-new-contents') {
+    columnFilters.value.push({
+      id: 'newContents',
+      value: true
+    })
+  }
+
+  if (newVal === 'without-new-contents') {
+    columnFilters.value.push({
+      id: 'newContents',
+      value: false
+    })
+  }
+})
+
+watch(documentsFilter, (newVal) => {
+  columnFilters.value = columnFilters.value.filter(
+    f => f.id !== 'documents'
+  )
+
+  if (newVal !== 'all') {
+    columnFilters.value.push({
+      id: 'documents',
+      value: newVal
+    })
   }
 })
 
@@ -370,7 +488,7 @@ const pagination = computed({
               </template>
             </UButton>
           </EcUsersDisableProfileModal>
-          <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
+          <!-- <EcUsersDeleteModal :users="selectedUsers" @success="refresh">
             <UButton
               v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
               label="Elimina"
@@ -385,7 +503,7 @@ const pagination = computed({
                 </UKbd>
               </template>
             </UButton>
-          </EcUsersDeleteModal>
+          </EcUsersDeleteModal> -->
 
           <USelect
             v-model="typeFilter"
@@ -409,6 +527,30 @@ const pagination = computed({
             :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
             placeholder="Filter status"
             class="min-w-28"
+          />
+          <USelect
+            v-model="newContentsFilter"
+            :items="[
+              { label: 'Tutti i contenuti', value: 'all' },
+              { label: 'Con nuovi contenuti', value: 'with-new-contents' },
+              { label: 'Senza nuovi contenuti', value: 'without-new-contents' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Nuovi contenuti"
+            class="min-w-48"
+          />
+
+          <USelect
+            v-model="documentsFilter"
+            :items="[
+              { label: 'Tutti i documenti', value: 'all' },
+              { label: 'Non inviati', value: 'missing' },
+              { label: 'In verifica', value: 'pending' },
+              { label: 'Verificati', value: 'verified' }
+            ]"
+            :ui="{ trailingIcon: 'group-data-[state=open]:rotate-180 transition-transform duration-200' }"
+            placeholder="Documenti"
+            class="min-w-40"
           />
           <UDropdownMenu
             :items="
