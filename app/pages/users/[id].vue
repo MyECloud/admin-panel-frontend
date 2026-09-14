@@ -42,37 +42,19 @@ async function onImpersonate() {
 }
 
 // --- Documents actions ---
-const isConfirmingDocs = ref(false)
+const isConfirmDocumentsModalOpen = ref(false)
+const isRejectDocumentsModalOpen = ref(false)
 const isRejectingDocs = ref(false)
 const rejectedDocumentIds = ref(new Set<number>())
 
-async function onConfirmDocuments() {
-  isConfirmingDocs.value = true
-  try {
-    await $api(`/admin/escorts/${userId}/confirm`, { method: 'PATCH' })
-    toast.add({ title: 'Documenti confermati', color: 'success' })
-    rejectedDocumentIds.value = new Set()
-    await refresh()
-  } catch {
-    toast.add({ title: 'Errore durante la conferma dei documenti', color: 'error' })
-  } finally {
-    isConfirmingDocs.value = false
-  }
+async function onDocumentsConfirmed() {
+  isConfirmDocumentsModalOpen.value = false
+  await refresh()
 }
 
-async function onRejectDocuments() {
-  isRejectingDocs.value = true
-  try {
-    rejectedDocumentIds.value = new Set(user.value?.documents.items.map(d => d.id) ?? [])
-    await $api(`/admin/escorts/${userId}/reject`, { method: 'PATCH' })
-    toast.add({ title: 'Documenti rifiutati', color: 'success' })
-    await refresh()
-  } catch {
-    rejectedDocumentIds.value = new Set()
-    toast.add({ title: 'Errore durante il rifiuto dei documenti', color: 'error' })
-  } finally {
-    isRejectingDocs.value = false
-  }
+async function onDocumentsRejected() {
+  isRejectDocumentsModalOpen.value = false
+  await refresh()
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -343,8 +325,7 @@ async function onToggleSuspend() {
               color="error"
               variant="soft"
               size="sm"
-              :loading="isRejectingDocs"
-              @click="onRejectDocuments"
+              @click="isRejectDocumentsModalOpen = true"
             />
             <UButton
               icon="i-heroicons-check-circle"
@@ -352,8 +333,25 @@ async function onToggleSuspend() {
               color="success"
               variant="soft"
               size="sm"
-              :loading="isConfirmingDocs"
-              @click="onConfirmDocuments"
+              @click="isConfirmDocumentsModalOpen = true"
+            />
+            <EcUsersConfirmDocumentModalVue
+              v-if="user"
+              v-model:open="isConfirmDocumentsModalOpen"
+              :user="{
+                id: user.id,
+                name: user.name
+              }"
+              @success="onDocumentsConfirmed"
+            />
+            <EcUsersRejectDocumentModalVue
+              v-if="user"
+              v-model:open="isRejectDocumentsModalOpen"
+              :user="{
+                id: user.id,
+                name: user.name
+              }"
+              @success="onDocumentsRejected"
             />
           </div>
 
