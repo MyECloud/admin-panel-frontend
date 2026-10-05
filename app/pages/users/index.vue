@@ -139,7 +139,6 @@ function getRowItems(row: Row<ApiUser>) {
 }
 
 function getDocumentsStatus(documents?: { sent: boolean, verified: boolean }) {
-  console.log(documents?.sent)
   if (!documents?.sent) {
     return {
       value: 'missing',
@@ -301,10 +300,24 @@ const columns: TableColumn<ApiUser>[] = [
   },
   {
     accessorKey: 'documents',
-    accessorFn: row => getDocumentsStatus(row.documents).value,
+    accessorFn: (row) => {
+      if (row.type !== 'escort') {
+        return '--//--'
+      }
+
+      return getDocumentsStatus(row.documents).value
+    },
     header: 'Documenti',
     filterFn: 'equals',
     cell: ({ row }) => {
+      if (row.original.type !== 'escort') {
+        return h(
+          'span',
+          { class: 'text-muted' },
+          '--//--'
+        )
+      }
+
       const config = getDocumentsStatus(row.original.documents)
 
       return h(
