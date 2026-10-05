@@ -15,7 +15,13 @@ const table = useTemplateRef('table')
 const { $api } = useNuxtApp()
 
 const page = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(50)
+
+const pageSizeOptions = [
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+  { label: '200', value: 200 }
+]
 
 const columnFilters = ref([{
   id: 'email',
@@ -463,13 +469,20 @@ const pagination = computed({
 
     <template #body>
       <div class="flex flex-wrap items-center justify-between gap-1.5">
-        <UInput
-          v-model="usernameFilter"
-          class="max-w-sm"
-          icon="i-lucide-search"
-          placeholder="Cerca utenti..."
-        />
-
+        <div>
+          <UInput
+            v-model="usernameFilter"
+            class="max-w-sm me-2"
+            icon="i-lucide-search"
+            placeholder="Cerca utenti..."
+          />
+          <USelect
+            v-model="pageSize"
+            :items="pageSizeOptions"
+            value-key="value"
+            class="min-w-28"
+          />
+        </div>
         <div class="flex flex-wrap items-center gap-1.5">
           <EcUsersAddPremiumModal :users="selectedUsers" @success="refresh">
             <UButton
@@ -627,9 +640,17 @@ const pagination = computed({
       />
 
       <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
-        <div class="text-sm text-muted">
-          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} di
-          {{ totalItems }} utenti totali.
+        <div class="flex items-center gap-3 text-sm text-muted">
+          <span>
+            {{ data.length }} di {{ totalItems }} utenti totali
+          </span>
+
+          <USelect
+            v-model="pageSize"
+            :items="pageSizeOptions"
+            value-key="value"
+            class="w-24"
+          />
         </div>
 
         <div class="flex items-center gap-1.5">
