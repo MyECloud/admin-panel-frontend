@@ -417,6 +417,28 @@ async function onToggleSuspend() {
                 </span>
               </div>
             </div>
+            <div
+              class="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+            >
+              <div class="flex items-center justify-center shrink-0 w-[252px] h-[160px] rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+                <UIcon
+                  name="i-heroicons-play-circle"
+                  class="w-14 h-14 text-gray-400 dark:text-gray-500"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1 text-sm">
+                <span class="font-semibold text-primary-600 dark:text-primary-400">
+                  Video
+                </span>
+                <span class="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                  Nome video
+                </span>
+                <span class="text-gray-500 dark:text-gray-400 text-xs">
+                  Video caricato
+                </span>
+              </div>
+            </div>
           </div>
 
           <p v-else class="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
