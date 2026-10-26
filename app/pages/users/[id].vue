@@ -46,14 +46,17 @@ const isConfirmDocumentsModalOpen = ref(false)
 const isRejectDocumentsModalOpen = ref(false)
 const isRejectingDocs = ref(false)
 const rejectedDocumentIds = ref(new Set<number>())
+const documentsProcessed = ref(false)
 
 async function onDocumentsConfirmed() {
   isConfirmDocumentsModalOpen.value = false
+  documentsProcessed.value = true
   await refresh()
 }
 
 async function onDocumentsRejected() {
   isRejectDocumentsModalOpen.value = false
+  documentsProcessed.value = true
   await refresh()
 }
 
@@ -325,6 +328,7 @@ async function onToggleSuspend() {
               color="error"
               variant="soft"
               size="sm"
+              :disabled="documentsProcessed"
               @click="isRejectDocumentsModalOpen = true"
             />
             <UButton
@@ -333,6 +337,7 @@ async function onToggleSuspend() {
               color="success"
               variant="soft"
               size="sm"
+              :disabled="documentsProcessed"
               @click="isConfirmDocumentsModalOpen = true"
             />
             <EcUsersConfirmDocumentModalVue
